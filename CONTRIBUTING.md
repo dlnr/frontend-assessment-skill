@@ -131,7 +131,7 @@ Publishing to npm is automated via GitHub Actions (`.github/workflows/publish.ym
 3. Publish a GitHub Release for that tag (or run the workflow manually via `workflow_dispatch`).
 4. The GitHub Actions workflow will publish the package to npm using GitHub OIDC.
 
-> Important: the job uses the GitHub Actions environment `publish`. This must match the environment configured for the package in npm Trusted Publishing.
+> Important: the job uses the GitHub Actions environment `npm stage publish`. This must exactly match the environment configured for the package in npm Trusted Publishing.
 
 ### Manual Publishing (Fallback)
 

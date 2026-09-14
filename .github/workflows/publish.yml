@@ -8,7 +8,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: publish # Must match the environment configured in npm Trusted Publishing
+    environment: "npm stage publish" # Must exactly match the environment configured in npm Trusted Publishing
     permissions:
       contents: read
       id-token: write # Required for GitHub Actions OIDC exchange with npm
