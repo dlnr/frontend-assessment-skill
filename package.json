@@ -3,11 +3,7 @@
   "version": "1.0.0",
   "description": "Installer for the frontend-assessment agent skill (Zed, Claude, and agent tools)",
   "type": "module",
-  "main": "bin/cli.js",
-  "bin": {
-    "frontend-assessment-skill": "./bin/cli.js",
-    "frontend-assessment": "./bin/cli.js"
-  },
+  "bin": "./bin/cli.js",
   "files": [
     "bin",
     "skills",
