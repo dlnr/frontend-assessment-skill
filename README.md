@@ -50,7 +50,7 @@ The skill calculates a strict, reproducible score (0–100) across 7 criteria:
 | **Quarterly delivery cadence** | 10 | Commits, merges, and releases during the assessed quarter |
 | **Test suite maturity** | 10 | Presence of unit, integration, component, and e2e test layers |
 | **Coverage** | 10 | Frontend code test coverage percentage |
-| **ADS adoption & compliance** | 20 | Amsterdam Design System adoption & migration away from legacy ASC |
+| **UI system & component library** | 20 | Adoption of a single consistent component library, formal design tokens, and non-deprecated UI dependencies |
 
 ---
 

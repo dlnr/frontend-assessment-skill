@@ -20,7 +20,8 @@
     "skills",
     "frontend",
     "assessment",
-    "amsterdam-design-system"
+    "design-system",
+    "component-library"
   ],
   "author": "Niels Roozemond <n.roozemond@amsterdam.nl>",
   "license": "MIT",

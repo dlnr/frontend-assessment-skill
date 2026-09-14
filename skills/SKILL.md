@@ -2,7 +2,7 @@
 
 name: frontend-assessment
 
-description: Assess frontend health and maturity. USE WHEN the user asks for a "frontend assessment", "frontend health check", "frontend review", "frontend score", or wants a reproducible 1-100 score for dependency freshness, core package currency, contributor activity, delivery cadence, testing, coverage, and Amsterdam Design System adoption/compliance.
+description: Assess frontend health and maturity. USE WHEN the user asks for a "frontend assessment", "frontend health check", "frontend review", "frontend score", or wants a reproducible 1-100 score for dependency freshness, core package currency, contributor activity, delivery cadence, testing, coverage, and UI system & component library adoption.
 
 ---
 ---
@@ -39,7 +39,7 @@ Measure frontend health in a way that is:
    - build/test/project configuration
    - git history
    - GitHub releases / PR metadata
-   - ADS MCP results
+   - UI system and design token package manifests & deprecation metadata
 
 ## Stack Detection
 
@@ -52,7 +52,8 @@ Detect the frontend stack first. Typical examples:
 | Router | `react-router`, `react-router-dom`, `@tanstack/router`, framework router |
 | Build tool | `vite`, `webpack`, `rspack`, `parcel` |
 | Test tools | `jest`, `vitest`, `cypress`, `playwright` |
-| UI system | `@amsterdam/design-system-*`, `@amsterdam/asc-*`, `@mui/*`, etc. |
+| UI component library | `@mui/*`, `@chakra-ui/*`, `antd`, `@mantine/*`, `@radix-ui/*`, `shadcn` (`components.json`), `@carbon/*`, `@fluentui/*`, `react-bootstrap`, `@shoelace-style/*`, in-house/custom design system |
+| Design tokens / Styling | `style-dictionary`, `@tokens-studio/*`, design token packages, `tailwindcss`, `@vanilla-extract/*`, `styled-components`, `@emotion/*`, CSS variables/theme tokens |
 
 When a stack-specific package from the user's examples is not present, substitute the equivalent core package(s) for that stack.
 
@@ -150,19 +151,15 @@ Prefer existing coverage artifacts or CI/test configuration over inventing new i
 
 If multiple coverage figures exist, report the most relevant frontend application coverage and note any additional figures.
 
-### 7. Amsterdam Design System
+### 7. UI system and component library
 
-Use **ADS MCP** to assess:
+Inspect the project dependencies and source code to identify and assess:
 
-- whether Amsterdam Design System packages are present
-- whether deprecated ASC packages are still in use
-- component and pattern adoption
-- code compliance against ADS patterns
-- whether the installed ADS packages are on the latest version
-
-If both current ADS and deprecated ASC packages are used, call that out explicitly as mixed adoption.
-
-If ADS MCP is unavailable, say so clearly and mark the ADS criterion as **not verifiable in the preferred way**. Still inspect package usage manually, but reduce confidence in that criterion.
+- **Detected component libraries**: Name all UI component libraries in use (e.g. `@mui/*`, `antd`, `@chakra-ui/*`, `@mantine/*`, `@radix-ui/*`, `shadcn`, `@carbon/*`, `@fluentui/*`, `react-bootstrap`, in-house component library, etc.).
+- **Detected design tokens / theme libraries**: Identify design token packages and formal theme tokens (e.g. `style-dictionary`, `@tokens-studio/*`, dedicated token packages, CSS variables/theme definitions).
+- **Consistency**: Verify whether a **single component library** is used consistently across the application, or if multiple competing UI libraries are mixed.
+- **Deprecation check**: Check if any detected UI library or token package is deprecated using `npm view <package> deprecated --json` or known deprecation status.
+- **Adoption & version currency**: Evaluate if the component library and design system are actively used across the app and on supported versions.
 
 ## Scoring Rubric
 
@@ -176,16 +173,17 @@ Score each criterion independently and sum to **100**.
 | Quarterly commits, merges, releases |     10 | Score three sub-parts and add them: commits `0-4` (`>=50` = 4, `20-49` = 3, `5-19` = 2, `1-4` = 1, `0` = 0), merges `0-3` (`>=15` = 3, `5-14` = 2, `1-4` = 1, `0` = 0), releases `0-3` (`>=2` = 3, `1` = 2, `0` = 0).                                                                                                                                      |
 | Test suite maturity                 |     10 | `10` unit plus integration/e2e/component coverage across meaningful app flows; `7` at least two test layers; `4` one automated test layer only; `0` no automated tests found.                                                                                                                                                                              |
 | Coverage                            |     10 | `10` >= 80%; `8` 70-79%; `6` 60-69%; `3` 40-59%; `1` 1-39%; `0` no measurable coverage found. Use the most relevant frontend coverage number, not backend-only coverage.                                                                                                                                                                                   |
-| ADS adoption and compliance         |     20 | `20` broad ADS adoption, compliant patterns, latest ADS major, no deprecated ASC usage; `15` good adoption with minor lag or small isolated deviations; `8` mixed ADS and legacy UI usage or partial compliance; `3` packages present but weak adoption/compliance; `0` no ADS adoption, only deprecated ASC usage, or serious non-compliance.             |
+| UI system & component library       |     20 | `20` single modern component library used consistently across the app + formal design system & token library adoption, non-deprecated; `15` single component library used consistently with design tokens/theme system (minor version lag or isolated deviations); `10` single component library without formal tokens OR custom design system without token library; `5` mixed/competing component libraries (fragmented UI) OR deprecated library with migration underway; `0` deprecated/unmaintained UI library as primary UI, severe library fragmentation, or no component library/tokens. |
 
 ## Important Scoring Rules
 
 1. **Do not make up evidence.**
 2. **Do not average away major problems.** If a core package is badly outdated, reflect that sharply.
 3. **Do not over-penalize stable packages** that are latest even if the ecosystem has been quiet for more than 6 months.
-4. **Do not give full ADS credit** when deprecated `@amsterdam/asc-*` packages are still significant.
-5. **Keep the rubric fixed.** If you must diverge, explain exactly why.
-6. **Factor in when calculating the score** the age of the repository, complexity and number of developers active in the repo. 
+4. **Penalize deprecated and fragmented UI libraries.** Using deprecated UI packages or mixing multiple competing component libraries directly reduces the UI system score.
+5. **Reward consistent single component library and design token usage.** Full points require a single unified component library paired with a design system and token library.
+6. **Keep the rubric fixed.** If you must diverge, explain exactly why.
+7. **Factor in when calculating the score** the age of the repository, complexity and number of developers active in the repo. 
 
 ## Required Output
 
@@ -196,6 +194,8 @@ Return the assessment in this structure:
 - repository / app(s) assessed
 - quarter assessed
 - detected stack
+- detected UI system & component library: `<names of detected libraries or "None">`
+- detected design tokens / theme library: `<names of detected token packages or "None">`
 
 ### Score summary
 
@@ -211,8 +211,15 @@ Return the assessment in this structure:
 | Quarterly commits, merges, releases | 10 | ... | ... | ... |
 | Test suite maturity | 10 | ... | ... | ... |
 | Coverage | 10 | ... | ... | ... |
-| ADS adoption and compliance | 20 | ... | ... | ... |
+| UI system & component library | 20 | ... (Names of used component libraries & token libraries, consistency status, and deprecation status) | ... | ... |
 | **Total** | **100** |  | **<total>** |  |
+
+### UI system & component library status
+
+Include a breakdown of detected UI and design token packages:
+
+| Library / Package | Role (Component library / Tokens / Styling) | Installed version | Latest version | Deprecated? | Consistency & Notes |
+| --- | --- | --- | --- | --- | --- |
 
 ### Core package status
 
@@ -251,4 +258,3 @@ End with:
 - Do not install new tooling just to produce the assessment.
 - For Nx workspaces, use `npm nx` / `npx nx` and existing targets rather than bypassing Nx.
 - Keep the result concise, but include enough evidence that another reviewer can reproduce the score.
-
