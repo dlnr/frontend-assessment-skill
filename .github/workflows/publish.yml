@@ -8,6 +8,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: publish # Must match the environment configured in npm Trusted Publishing
     permissions:
       contents: read
       id-token: write # Required for GitHub Actions OIDC exchange with npm
@@ -38,4 +39,4 @@ jobs:
 
       - name: Publish to npm
         if: steps.check_version.outputs.publish == 'true'
-        run: npm publish --access public
+        run: npm publish --provenance --access public
