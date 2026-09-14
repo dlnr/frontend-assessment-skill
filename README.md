@@ -81,29 +81,26 @@ git add .
 git commit -m "Initial release of frontend-assessment-skill"
 ```
 
-### 3. Publishing to npm
+### 3. Publishing to npm (via GitHub Actions)
 
-1. **Log in to npm** (create an account at [npmjs.com](https://www.npmjs.com) if you haven't already):
-   ```bash
-   npm login
-   ```
+This repository includes a GitHub Actions workflow (`.github/workflows/publish.yml`) that automatically publishes to npm when a GitHub Release is published, with support for npm provenance.
 
-2. **Publish the package publicly**:
-   ```bash
-   npm publish --access public
-   ```
+1. Create an **Access Token** on [npmjs.com](https://www.npmjs.com) (Automation token or Granular Access Token with Read and write access to packages).
+2. Add it as a secret in your GitHub repository:
+   - Navigate to **Settings > Secrets and variables > Actions**
+   - Create a new repository secret named `NPM_TOKEN` with your npm token value.
+3. To publish a release:
+   - Update `version` in `package.json` (e.g. `npm version patch`)
+   - Push commits and tags to GitHub
+   - Create and publish a new Release in GitHub (e.g. `v1.0.0`)
+   - The workflow will automatically publish the package with npm provenance enabled.
 
-3. **Releasing Updates**:
-   To publish future updates:
-   ```bash
-   npm version patch   # or minor / major
-   npm publish
-   ```
+Alternatively, you can manually trigger the workflow from the **Actions** tab in GitHub.
 
 ---
 
 ## License & Attribution
 
-This project is licensed under the [MIT License](./LICENSE) &copy; 2025 Niels Roozemond.
+This project is licensed under the [MIT License](./LICENSE) &copy; 2025 DLN Roozemond.
 
-You are free to use, modify, and distribute this skill. When redistributing or including this skill in other packages, attribution to **Niels Roozemond** is required as detailed in the `LICENSE`.
+You are free to use, modify, and distribute this skill. When redistributing or including this skill in other packages, attribution to **DLN Roozemond** is required as detailed in the `LICENSE`.
