@@ -128,7 +128,7 @@ Publishing to npm is automated via GitHub Actions (`.github/workflows/publish.ym
    ```bash
    git push origin main --tags
    ```
-3. The GitHub Actions workflow will detect the new version, create npm provenance, and publish the package to the npm registry.
+3. The GitHub Actions workflow will detect the new version and publish the package to the npm registry.
 
 ### Manual Publishing (Fallback)
 
@@ -138,6 +138,6 @@ If manual publishing is required:
 # Ensure you are logged in with publishing permissions
 npm login
 
-# Publish with public access and provenance
-npm publish --provenance --access public
+# Publish with public access
+npm publish --access public
 ```
