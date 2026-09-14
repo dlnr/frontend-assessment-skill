@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write # Required for GitHub Actions OIDC exchange with npm
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,5 +39,3 @@ jobs:
       - name: Publish to npm
         if: steps.check_version.outputs.publish == 'true'
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
