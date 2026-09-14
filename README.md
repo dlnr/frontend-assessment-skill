@@ -54,48 +54,9 @@ The skill calculates a strict, reproducible score (0–100) across 7 criteria:
 
 ---
 
-## Development & Publishing
+## Contributing
 
-### 1. Local Testing
-
-To test the CLI installer locally before publishing:
-
-```bash
-# Test help output
-node bin/cli.js --help
-
-# Test interactive installation
-node bin/cli.js
-
-# Test npx invocation locally in the package root
-npx .
-```
-
-### 2. Versioning & Git Setup
-
-Initialize your git repository and prepare a release:
-
-```bash
-git init
-git add .
-git commit -m "Initial release of frontend-assessment-skill"
-```
-
-### 3. Publishing to npm (via GitHub Actions)
-
-This repository includes a GitHub Actions workflow (`.github/workflows/publish.yml`) that automatically publishes to npm when a GitHub Release is published, with support for npm provenance.
-
-1. Create an **Access Token** on [npmjs.com](https://www.npmjs.com) (Automation token or Granular Access Token with Read and write access to packages).
-2. Add it as a secret in your GitHub repository:
-   - Navigate to **Settings > Secrets and variables > Actions**
-   - Create a new repository secret named `NPM_TOKEN` with your npm token value.
-3. To publish a release:
-   - Update `version` in `package.json` (e.g. `npm version patch`)
-   - Push commits and tags to GitHub
-   - Create and publish a new Release in GitHub (e.g. `v1.0.0`)
-   - The workflow will automatically publish the package with npm provenance enabled.
-
-Alternatively, you can manually trigger the workflow from the **Actions** tab in GitHub.
+Contributions are welcome! Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for local development setup, testing instructions, and the release workflow.
 
 ---
 
