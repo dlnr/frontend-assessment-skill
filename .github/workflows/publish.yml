@@ -1,8 +1,9 @@
 name: Publish to npm
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -18,10 +19,26 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Check if version is already published
+        id: check_version
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          
+          # Check npm registry for existing version
+          if npm view "$PKG_NAME@$PKG_VERSION" version >/dev/null 2>&1; then
+            echo "Version $PKG_VERSION is already published on npm. Skipping publish."
+            echo "publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version $PKG_VERSION is not yet published. Proceeding with publish."
+            echo "publish=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to npm
+        if: steps.check_version.outputs.publish == 'true'
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
