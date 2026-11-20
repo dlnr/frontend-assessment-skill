@@ -1,6 +1,6 @@
 ---
 name: frontend-assessment
-description: Assess frontend health and maturity. Use when the user asks for a frontend assessment, health check, review, or reproducible 0-100 score for dependencies, contributor activity, delivery cadence, testing, coverage, UI system adoption, and optional live-site performance.
+description: Assess frontend health and maturity. Use when the user asks for a frontend assessment, health check, review, or reproducible 0-100 score for dependencies, contributor activity, delivery cadence, testing, coverage, and UI system adoption. Coordinates separate Lighthouse audit and journey performance skills when a target URL is supplied.
 ---
 
 # Frontend Assessment
@@ -22,10 +22,10 @@ Execute in this order:
 1. Establish scope and detect the stack.
 2. Collect repository evidence.
 3. Map the primary user journey and, when browser access is available, walk through it.
-4. If a URL was supplied, run Lighthouse and replay the journey during performance measurement.
+4. If a URL was supplied, invoke `frontend-lighthouse` for audits and `frontend-performance` for a separate journey trace. Follow the capability and fallback procedure in section 4; neither workflow depends on the other's success.
 5. Calculate scores and return the report in the response; do not save it to a file.
 
-Use repository-native tooling for evidence collection, but **do not execute the assessed project's test suites or coverage commands**, including unit, integration, component, end-to-end, and visual/Storybook tests. Do not trigger them indirectly through package scripts, Nx targets, or CI workflows. Inspect existing test/CI configuration and artifacts instead. Do not install tools or add instrumentation just to produce the assessment. Optional browser walkthroughs and Lighthouse measurements follow sections 3-4; they do not authorize running project test suites.
+Use repository-native tooling for evidence collection, but **do not execute the assessed project's test suites or coverage commands**, including unit, integration, component, end-to-end, and visual/Storybook tests. Do not trigger them indirectly through package scripts, Nx targets, or CI workflows. Inspect existing test/CI configuration and artifacts instead. Do not add instrumentation or install tools into the assessed project. The only tooling exception is an explicitly authorized standalone Lighthouse run outside the project, as specified by `frontend-lighthouse`. Optional browser walkthroughs, audits, and traces follow sections 3-4; they do not authorize running project test suites.
 
 ## 1. Scope and Stack
 
@@ -97,42 +97,35 @@ Associate verified API calls with journey tasks. List HTTP methods, routes, and 
 
 When a target URL and Chrome DevTools MCP are available, follow the authentication procedure below, then walk through the journey **before auditing performance**. Record an ordered replay plan with routes, actions, and expected page states. Avoid destructive actions, real purchases, or other consequential submissions without explicit authorization; record skipped steps. If browser access is unavailable, use the source-verified journey and label it as not browser-verified.
 
-## 4. Optional Live-Site Performance
+## 4. Optional Live-Site Audits and Performance
 
-### Availability and Authentication
+No URL: skip both live workflows without changing the repository-only score. Otherwise load the two companion skills through the agent's skill discovery mechanism. The installer places `frontend-lighthouse` and `frontend-performance` alongside `frontend-assessment`; each is also independently invokable. If a companion is missing, disclose that limitation and ask the user to update the installation rather than assume its instructions or silently omit it.
 
-- No URL: skip live measurement without changing the repository-only score.
-- Chrome DevTools MCP unavailable: add a report note and leave Lighthouse unscored. Do not install tooling or substitute another browser.
-- Login, SSO, or another authentication challenge during the walkthrough or either measurement: pause, ask the user to sign in manually in the MCP-controlled browser, and **wait for confirmation**. Do not request, enter, or store credentials or bypass access controls.
-- After confirmation, verify the intended app page is available in the same authenticated session. Preserve session storage/cookies needed for access. If a test redirects to authentication, discard that test's results and rerun after access is restored; never score the login page as the target app. If access remains blocked, report the limitation and leave affected measurements unavailable.
+### Shared Context and Authentication
 
-### Journey-Based Measurement
+Pass both skills the supplied URL, scoped app, verified journey/replay plan, completed/skipped steps, authenticated browser page/session, requested settings, and relevant existing evidence. Keep the assessed project read-only and output results inline.
 
-After the walkthrough:
+For login/SSO during the walkthrough or a measurement, pause, ask the user to sign in manually in the browser used for that run, and wait for confirmation. Verify the app page, preserve necessary storage, and discard/rerun results interrupted by authentication. Never score a login/error page as the app or request/store credentials. A standalone browser does not automatically share MCP authentication. Safety exclusions for consequential actions are separate from audit/trace availability.
 
-1. Inspect the available MCP capabilities. Use a journey-capable Lighthouse workflow when supported; otherwise combine a navigation audit with a journey trace where available. Do not assume every audit tool exposes a Performance category score.
-2. Use the supplied URL as the entry point and reuse the authenticated browser session. If the Lighthouse workflow supports journey interactions, replay the verified actions in order. If it only audits a single navigation, audit the entry page and replay the journey in the separate performance trace; clearly distinguish these scopes.
-3. When using a trace, keep it running through the replayed interactions, then stop it. Record completed/skipped steps and reasons, actual URLs, measurement date, browser/tool versions where available, device/viewport, throttling, and cache settings. Use consistent settings for comparable runs.
-4. Capture the Lighthouse **Performance category score (0-100)** when exposed. Do not derive it from unrelated audit categories, trace timings, or the three diagnostics below. An unavailable category score makes the optional criterion `N/A`, even if other diagnostics were captured.
-5. Report LCP, INP, and CLS with their source and units. Keep navigation/page results distinct in multi-page traces; do not combine unrelated pages into a synthetic metric. Distinguish lab/trace results from representative field data.
+### Lighthouse Audit: `frontend-lighthouse`
 
-### Metric Breakdown (Diagnostic Only)
+Run the supported Lighthouse categories after the walkthrough. The companion checks actual capabilities: an MCP `lighthouse_audit` tool may explicitly exclude Performance while still producing accessibility, SEO, and best-practices results. Retain those results; do not claim the entire audit failed because its Performance category is missing.
 
-| Metric | Good      | Needs improvement      | Poor     |
-| ------ | --------- | ---------------------- | -------- |
-| LCP    | <= 2.5 s  | > 2.5 s and <= 4 s     | > 4 s    |
-| INP    | <= 200 ms | > 200 ms and <= 500 ms | > 500 ms |
-| CLS    | <= 0.1    | > 0.1 and <= 0.25      | > 0.25   |
+If no tool exposes the required Performance category, the companion must offer a user-provided Lighthouse JSON report or an explicitly authorized standalone Lighthouse run and wait for the user's choice before finalizing `N/A`. Do not repeat a fallback question already answered. No unapproved tool downloads, separate browser launches, or third-party audit services are allowed. A provided report or authorized standalone run can supply the score when its target, category value, and provenance are validated; disclose its source, date, and settings rather than label it an MCP result.
 
-List each metric's value, individual score when provided by the tool, and threshold rating. Convert tool-provided 0-1 metric scores to 0-100 and label the scale. If no numeric score is provided, report the threshold rating rather than inventing a numeric score.
+Only an actual, valid Lighthouse **Performance category score (0-100)** can earn the optional weight. Preserve measured zero as zero. Missing/invalid scores remain `N/A` after a declined or blocked fallback, with the exact reason. Other category scores and trace timings cannot substitute for it.
 
-Rate INP only from representative field data (typically the 75th percentile across visits). A lab interaction can be reported as a diagnostic but does not establish field INP; mark unavailable field INP `N/A`. Never substitute Total Blocking Time (TBT) for INP. Explain that INP is not an input to Lighthouse's navigation Performance score, and the LCP/INP/CLS breakdown alone does not reconstruct that score.
+### Journey Trace: `frontend-performance`
 
-These diagnostics add **no assessment points**. Missing individual metrics do not change an available Lighthouse category score or its weight.
+Independently replay the verified safe journey in a Chrome DevTools performance trace. Keep the recording running through the actions and explicitly stop it; a default auto-stopping navigation trace may end before interactions. Run this workflow even when Lighthouse Performance is unavailable, provided tracing is supported. Conversely, an unavailable trace must not suppress a valid Lighthouse result.
+
+Use the companion's LCP/INP/CLS thresholds and evidence rules. Keep per-page/navigation results distinct, label lab interaction timings separately from field INP, and never substitute TBT for INP. Diagnostics add no assessment points and cannot reconstruct Lighthouse's category score. Missing diagnostics do not remove an available Lighthouse score or its weight.
+
+For both workflows, record actual URLs, measurement date, tool/browser versions where available, device/viewport, throttling, cache/storage settings, scope, completed/skipped actions, and specific limitations. Distinguish navigation audits, imported reports, and journey traces in the final report.
 
 ## 5. Scoring
 
-The repository criteria total **100 points**. Add the optional **20-point Lighthouse criterion** only when a URL was supplied and its Performance category score was obtained through Chrome DevTools MCP. Exclude both history weights when the assessment window cannot be verified.
+The repository criteria total **100 points**. Add the optional **20-point Lighthouse criterion** only when a URL was supplied and `frontend-lighthouse` obtained a validated Performance category score through a supported audit tool, an explicitly authorized standalone run, or a user-provided Lighthouse report. Cite its source, date, and settings; do not require a separate journey trace to score it. Exclude both history weights when the assessment window cannot be verified.
 
 Calculate `applicable_maximum` as the sum of weights for scored criteria, then `normalized_score = round(100 * earned_points / applicable_maximum)`. Report both the normalized score and raw earned/applicable points. For example, the maximum is 100 (80 without history), or 120 (100 without history) when Lighthouse is scored; exclude any other criterion marked `N/A` as well. Unavailable evidence is not a measured zero, but apply explicit rubric outcomes such as no measurable coverage found. If no criterion can be scored, report the assessment as unavailable instead of dividing by zero.
 
@@ -145,7 +138,7 @@ Calculate `applicable_maximum` as the sum of weights for scored criteria, then `
 | Test suite maturity                 |     10 | `10`: unit plus integration/e2e/component tests across meaningful flows; `7`: at least two test layers; `4`: one automated layer; `0`: no automated tests found.                                                                                                                                                                                                                                                                                                                                                                           |
 | Coverage                            |     10 | `10`: >= 80%; `8`: >= 70% and < 80%; `6`: >= 60% and < 70%; `3`: >= 40% and < 60%; `1`: > 0% and < 40%; `0`: zero or no measurable frontend coverage found.                                                                                                                                                                                                                                                                                                                                                                                |
 | UI system & component library       |     20 | Score verified production usage, equally for third-party and in-house systems. `20`: a cohesive maintained component system, formal shared tokens, and consistent styling; `15`: a consistent system with tokens/theme and minor lag or isolated deviations; `10`: a shared component system without formal tokens; `5`: competing, inconsistently adopted component/styling systems, or a deprecated system with migration underway; `0`: primary UI is deprecated/unmaintained, severely fragmented, or lacks a shared component system. |
-| Lighthouse Performance (optional)   |     20 | `round(20 * lighthouse_performance_score / 100)`. No separate points for LCP, INP, or CLS. `N/A` if no URL, MCP access, or category score.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Lighthouse Performance (optional)   |     20 | `round(20 * lighthouse_performance_score / 100)`. No separate points for LCP, INP, or CLS. `N/A` if no URL or no validated category score after the offered fallback. Other audit categories and traces do not add points.                                                                                                                                                                                                                                                                                                                 |
 
 Keep the rubric fixed and explain any necessary deviation. Do not invent missing evidence or hide major core-package problems. Repository age, complexity, and developer counts beyond the contributor criterion must not adjust this score.
 
@@ -165,7 +158,7 @@ Return the entire report inline in your response, not as a file or a link to a g
 
 ### Scope
 
-State the repository/apps, exact assessment window, detected stack and package manager, UI libraries, tokens/theme, styling approach (including CSS-in-JS), and model(s) used (`Unknown` if unavailable). Include the target URL/MCP status and material evidence limitations.
+State the repository/apps, exact assessment window, detected stack and package manager, UI libraries, tokens/theme, styling approach (including CSS-in-JS), and model(s) used (`Unknown` if unavailable). Include the target URL, separate Lighthouse audit and performance-trace availability, imported/standalone evidence sources where applicable, and material evidence limitations.
 
 ### Score Summary and Scoring Table
 
@@ -196,13 +189,18 @@ Describe styling approaches separately from package names; CSS-in-JS itself is n
 
 Include the Mermaid `journey` diagram prepared in step 3, associated verified endpoints, and walkthrough limitations. Do not replace it with an architecture or API-plumbing diagram.
 
-### Optional Live-Site Performance Results
+### Optional Lighthouse Audit Results
 
-Place results **after the journey**. If no URL was supplied, use one short note. Otherwise include:
+Place results **after the journey**. If no URL was supplied, use one short note covering both live workflows. Otherwise include:
 
-- Lighthouse Performance category score, the calculation `round(20 * score / 100)`, and earned points out of 20, or why the criterion is `N/A`.
-- Measurement settings, replayed/skipped journey steps, audited pages, and the distinction between Lighthouse and trace scopes.
-- The diagnostic table below. Mark missing values/scores `N/A`; missing diagnostics do not remove an available Lighthouse score. Do not imply that these three metrics sum to the category score.
+- Audit status, supported category scores/findings (including non-Performance categories), audited pages, source (MCP, authorized standalone, or imported report), date, scope, and measurement settings.
+- Lighthouse Performance category score, the calculation `round(20 * score / 100)`, and earned points out of 20, or the exact reason it is `N/A` and the fallback decision. Do not describe a supported non-Performance audit as unavailable.
+
+### Optional Journey Performance Results
+
+When a URL was supplied, report trace status independently of Lighthouse, with measurement settings, actual pages, and completed/skipped journey steps and reasons. Distinguish safety exclusions from tool failures and authentication blocks.
+
+Include the diagnostic table below using `frontend-performance`'s evidence rules. Mark missing values/scores `N/A`; missing diagnostics do not remove an available Lighthouse score. Label field INP explicitly and report lab interaction timings separately. Keep pages and Lighthouse/trace scopes distinct. Do not imply that these three metrics sum to the category score.
 
 | Metric | Value and units | Individual score (0-100) | Threshold rating | Source / Page / Limitations |
 | ------ | --------------- | -----------------------: | ---------------- | --------------------------- |

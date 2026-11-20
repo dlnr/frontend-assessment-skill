@@ -6,7 +6,7 @@ Thank you for your interest in contributing to the **Frontend Assessment Skill**
 
 ## Project Structure
 
-This project is a lightweight, zero-dependency package containing an AI agent skill and a Node.js CLI installer:
+This project is a lightweight, zero-dependency package containing three AI agent skills and a Node.js CLI installer:
 
 ```
 frontend-assessment-skill/
@@ -16,14 +16,22 @@ frontend-assessment-skill/
 ├── bin/
 │   └── cli.js               # CLI installer script (Node.js ESM)
 ├── skills/
-│   └── SKILL.md             # The core AI Agent Skill specification & rubric
+│   ├── SKILL.md             # Assessment orchestration, scoring, and report
+│   ├── frontend-lighthouse/
+│   │   └── SKILL.md         # Lighthouse audits and Performance-score fallback
+│   └── frontend-performance/
+│       └── SKILL.md         # Journey tracing and performance diagnostics
+├── test/
+│   └── cli.test.js          # Isolated installer regression tests
 ├── LICENSE
 ├── package.json
 └── README.md
 ```
 
-- **`skills/SKILL.md`**: Contains the full prompt instructions, scoring formula, weights, and rubric used by AI agents (e.g. Zed, Claude) to perform frontend assessments.
-- **`bin/cli.js`**: The interactive and scripted installer invoked when users run `npx frontend-assessment-skill`. It copies `skills/SKILL.md` into either global (`~/.agents/skills/frontend-assessment/`) or project-level (`.agents/skills/frontend-assessment/`) skill directories.
+- **`skills/SKILL.md`**: Contains repository assessment instructions, the scoring rubric, combined report format, and coordination of the companion skills.
+- **`skills/frontend-lighthouse/SKILL.md`**: Audits supported Lighthouse categories and handles validated report import or explicitly authorized standalone runs when Performance is unsupported.
+- **`skills/frontend-performance/SKILL.md`**: Records safe journey traces and reports LCP/INP/CLS and interaction diagnostics independently of Lighthouse scores.
+- **`bin/cli.js`**: Installs all three skills into named directories under global (`~/.agents/skills/`) or project-level (`.agents/skills/`) storage. `--update` requires the existing primary skill and adds missing companions for legacy installations.
 
 ---
 
@@ -50,7 +58,7 @@ frontend-assessment-skill/
    node --version
    ```
 
-   *(No `npm install` is necessary as this project has zero runtime/build dependencies).*
+   *(No ).*
 
 ---
 
@@ -58,7 +66,13 @@ frontend-assessment-skill/
 
 ### 1. Testing the CLI Installer
 
-You can test the CLI installer locally without publishing to npm:
+Run the dependency-free automated installer tests (temporary projects and homes only):
+
+```bash
+npm test
+```
+
+You can also test the CLI installer locally without publishing to npm:
 
 ```bash
 # Test the help output
@@ -78,7 +92,7 @@ npx . --help
 
 ### 2. Testing Skill Changes in AI Agents
 
-When editing `skills/SKILL.md`:
+When editing any of the three `SKILL.md` files:
 
 1. Install your local version to test it:
    ```bash
@@ -88,8 +102,10 @@ When editing `skills/SKILL.md`:
    ```
 2. Open a frontend repository in Zed.
 3. Invoke the skill with sample prompts:
-   - *"Perform a frontend health assessment of this repository"*
-   - *"Run a frontend assessment for Q3 2025 focusing on the web-app package"*
+   - *""*
+   - *""*
+   - *""*
+   - *""*
 4. Check that:
    - The criteria scores and total 1-100 score calculate properly.
    - The markdown tables and breakdown formats match the desired structure.
@@ -97,6 +113,10 @@ When editing `skills/SKILL.md`:
    - UI-system findings trace imported components to production renders/templates, including aliases, re-exports, wrappers, and framework registration/auto-imports; unused imports and story/test-only usage do not count as production adoption.
    - A maintained in-house component system with consumed semantic CSS-variable tokens can earn the same UI-system score as a third-party equivalent without a recognized styling brand or dedicated token package.
    - Intentionally composed component/styling layers are distinguished from competing implementations, and sampled findings state their scope rather than claiming application-wide adoption.
+   - An MCP audit excluding Performance still reports supported categories and prompts once for report import or an authorized standalone run; declining the fallback excludes only the optional weight.
+   - A valid imported/standalone Performance score has verified page identity and labeled provenance/settings, null scores remain unavailable, and a measured zero is not mistaken for missing evidence.
+   - Journey traces stay active through replayed interactions, stop explicitly, and remain independent of Lighthouse availability; lab interaction timings are never substituted for field INP or a category score.
+   - Authentication blocks, tool failures, and skipped consequential actions are reported as distinct limitations; no project files, tests, or dependencies are changed by an assessment.
 
 ---
 

@@ -7,22 +7,36 @@ import readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SKILL_NAME = "frontend-assessment";
-const SOURCE_SKILL_PATH = path.resolve(__dirname, "../skills/SKILL.md");
+const PRIMARY_SKILL_NAME = "frontend-assessment";
+const SKILL_SOURCES = [
+    { name: PRIMARY_SKILL_NAME, source: "../skills/SKILL.md" },
+    {
+        name: "frontend-lighthouse",
+        source: "../skills/frontend-lighthouse/SKILL.md",
+    },
+    {
+        name: "frontend-performance",
+        source: "../skills/frontend-performance/SKILL.md",
+    },
+];
 
 const args = process.argv.slice(2);
 
 function printHelp() {
     console.log(`
-Frontend Assessment Skill Installer
+Frontend Assessment Skills Installer
+
+Installs three skills together:
+  frontend-assessment, frontend-lighthouse, frontend-performance
 
 Usage:
   npx frontend-assessment-skill [options]
 
 Options:
-  -g, --global     Install globally to ~/.agents/skills/frontend-assessment
-  -p, --project    Install locally to .agents/skills/frontend-assessment
-  -u, --update     Update the installed skill without prompting
+  -g, --global     Install all three skills globally to ~/.agents/skills
+  -p, --project    Install all three skills locally to .agents/skills
+  -u, --update     Replace bundled skill files without prompting; add missing companions
+                    Requires an existing frontend-assessment/SKILL.md
   -h, --help       Show this help message
 `);
 }
@@ -33,16 +47,23 @@ async function run() {
         process.exit(0);
     }
 
-    if (!fs.existsSync(SOURCE_SKILL_PATH)) {
-        console.error(
-            `\n❌ Error: Source skill file not found at ${SOURCE_SKILL_PATH}\n`,
-        );
-        process.exit(1);
+    const skills = [];
+    for (const { name, source } of SKILL_SOURCES) {
+        const sourcePath = path.resolve(__dirname, source);
+        try {
+            skills.push({ name, content: fs.readFileSync(sourcePath) });
+        } catch (err) {
+            console.error(
+                `\n❌ Error: Unable to read source skill file at ${sourcePath}: ${err.message}\n`,
+            );
+            process.exit(1);
+        }
     }
 
     console.log("\n=========================================");
-    console.log(" 📊 Frontend Assessment Skill Installer");
+    console.log(" 📊 Frontend Assessment Skills Installer");
     console.log("=========================================\n");
+    console.log(`Skills: ${skills.map(({ name }) => name).join(", ")}\n`);
 
     const updateMode = args.includes("-u") || args.includes("--update");
     let targetScope = null;
@@ -60,11 +81,9 @@ async function run() {
 
     try {
         if (!targetScope) {
-            console.log("Where would you like to install the skill?");
-            console.log("  1) Globally (~/.agents/skills/frontend-assessment)");
-            console.log(
-                "  2) In current project folder (.agents/skills/frontend-assessment)",
-            );
+            console.log("Where would you like to install all three skills?");
+            console.log("  1) Globally (~/.agents/skills)");
+            console.log("  2) In current project folder (.agents/skills)");
             console.log("  3) Cancel\n");
 
             const answer =
@@ -82,12 +101,16 @@ async function run() {
             }
         }
 
-        const targetDir =
-            targetScope === "global"
-                ? path.join(os.homedir(), ".agents", "skills", SKILL_NAME)
-                : path.join(process.cwd(), ".agents", "skills", SKILL_NAME);
-
-        const targetFile = path.join(targetDir, "SKILL.md");
+        const targetRoot = path.join(
+            targetScope === "global" ? os.homedir() : process.cwd(),
+            ".agents",
+            "skills",
+        );
+        const targets = skills.map((skill) => ({
+            ...skill,
+            targetFile: path.join(targetRoot, skill.name, "SKILL.md"),
+        }));
+        const targetFile = targets[0].targetFile;
         const skillExists = fs.existsSync(targetFile);
 
         if (updateMode && !skillExists) {
@@ -98,10 +121,13 @@ async function run() {
             process.exit(1);
         }
 
-        if (skillExists && !updateMode) {
+        const collisions = targets.filter(({ targetFile }) =>
+            fs.existsSync(targetFile),
+        );
+        if (collisions.length > 0 && !updateMode) {
             const overwrite = (
                 await rl.question(
-                    `\n⚠️  Skill already exists at:\n   ${targetFile}\n   Overwrite? (y/N): `,
+                    `\n⚠️  Bundled skill files already exist at:\n   ${collisions.map(({ targetFile }) => targetFile).join("\n   ")}\n   Overwrite existing files and install all three skills? (y/N): `,
                 )
             )
                 .trim()
@@ -109,22 +135,29 @@ async function run() {
 
             if (overwrite !== "y" && overwrite !== "yes") {
                 console.log(
-                    "\nInstallation cancelled. Existing file left untouched.\n",
+                    "\nInstallation cancelled. All files left untouched.\n",
                 );
                 process.exit(0);
             }
         }
 
-        fs.mkdirSync(targetDir, { recursive: true });
-        fs.copyFileSync(SOURCE_SKILL_PATH, targetFile);
+        for (const { targetFile, content } of targets) {
+            fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+            fs.writeFileSync(targetFile, content);
+        }
 
         const action = updateMode ? "updated" : "installed";
-        console.log(`\n✅ Successfully ${action} "${SKILL_NAME}" skill!`);
-        console.log(`   Location: ${targetFile}\n`);
+        console.log(`\n✅ Successfully ${action} all three skills!`);
+        for (const { name, targetFile } of targets) {
+            console.log(`   ${name}: ${targetFile}`);
+        }
+        console.log();
         console.log(
-            "You can now run frontend assessments in your AI agent (e.g. Zed, Claude) by prompting:",
+            "You can now run frontend assessments, Lighthouse audits, and performance investigations in your AI agent (e.g. Zed, Claude) by prompting:",
         );
-        console.log('   "Give me a frontend assessment of this repository"\n');
+        console.log('   "Give me a frontend assessment of this repository"');
+        console.log('   "Run a Lighthouse audit of this site"');
+        console.log('   "Investigate frontend performance on this site"\n');
     } catch (err) {
         console.error("\n❌ Installation failed:", err.message, "\n");
         process.exit(1);

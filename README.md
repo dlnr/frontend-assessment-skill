@@ -1,6 +1,12 @@
 # Frontend Assessment Skill
 
-An installable AI agent skill for Zed, Claude, and other agent systems that produces an evidence-based **0-100 frontend health and maturity score**. It assesses repository health, maps the primary user journey, and optionally measures live-site performance.
+An installable set of AI agent skills for Zed, Claude, and other agent systems that produces an evidence-based **0-100 frontend health and maturity score**. It assesses repository health, maps the primary user journey, and optionally runs separate Lighthouse audits and journey performance traces.
+
+| Skill                  | Responsibility                                                                                              |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `frontend-assessment`  | Repository evidence, user journey, scoring, and the combined report                                         |
+| `frontend-lighthouse`  | Lighthouse category audits, validated Performance scores, and report-import/authorized standalone fallbacks |
+| `frontend-performance` | Journey traces, LCP/INP/CLS diagnostics, and performance bottlenecks; no synthetic Lighthouse score         |
 
 ## Installation
 
@@ -10,8 +16,10 @@ Run the installer and choose a scope:
 npx frontend-assessment-skill
 ```
 
-- **Global** (`~/.agents/skills/frontend-assessment`): available across projects.
-- **Project** (`.agents/skills/frontend-assessment`): available only in the current repository.
+- **Global** (`~/.agents/skills/`): all three skills, available across projects.
+- **Project** (`.agents/skills/`): all three skills, available only in the current repository.
+
+Each skill is installed in its own named directory containing `SKILL.md`.
 
 Or select the scope with a flag:
 
@@ -25,7 +33,7 @@ npx frontend-assessment-skill --project
 
 ### Updating
 
-Use `@latest` and `--update` to replace an installed skill without an overwrite prompt:
+Use `@latest` and `--update` to replace the bundled skills without an overwrite prompt:
 
 ```bash
 # Update the global installation
@@ -35,7 +43,7 @@ npx frontend-assessment-skill@latest --update --global
 npx frontend-assessment-skill@latest --update --project
 ```
 
-Updating requires an existing installation and replaces its `SKILL.md`, including local customizations. Run without `--update` to install it first.
+Updating requires an existing `frontend-assessment/SKILL.md` and replaces all three bundled skill files, including local customizations. It adds missing companion skills when upgrading a legacy assessment-only installation and preserves unrelated files. Run without `--update` for a fresh installation; any existing bundled skill file requires overwrite confirmation.
 
 ## Usage
 
@@ -49,7 +57,7 @@ The default contributor activity and delivery window is **the last three months*
 
 Dependency status and live measurements describe the current state, even when a historical assessment window is selected.
 
-### Optional Live-Site Tests
+### Optional Live-Site Audits and Performance
 
 Supply a URL in your assessment request:
 
@@ -57,16 +65,23 @@ Supply a URL in your assessment request:
 
 A URL directly in the request or the `FRONTEND_ASSESSMENT_URL` environment variable also works; an explicit request takes precedence. These are assessment inputs, not installer flags.
 
-Live tests require **Chrome DevTools MCP** in your agent environment. The workflow is:
+**Chrome DevTools MCP** supports the browser walkthrough and journey tracing. Lighthouse capabilities are checked separately; some MCP `lighthouse_audit` tools explicitly exclude Performance. The workflow is:
 
 1. Inspect the repository and map the primary user journey.
-2. Walk through the journey in the browser and record its routes, actions, and expected page states.
-3. Run Lighthouse **after the walkthrough**, replaying the journey where the workflow supports interactions. For navigation-only audits, test the entry page with Lighthouse and replay the journey in a separate performance trace where supported.
-4. Report the Lighthouse Performance category score, LCP/INP/CLS diagnostics, measurement settings, and completed or skipped journey steps. Keep page-level results and Lighthouse/trace scopes distinct.
+2. Walk through the journey in the browser and record its routes, safe actions, and expected page states.
+3. Invoke `frontend-lighthouse` for the supported audit categories **after the walkthrough**. If Performance is unsupported, retain accessibility/SEO/best-practices results and offer a Lighthouse JSON report import or an explicitly authorized standalone Lighthouse run before finalizing its optional score as unavailable.
+4. Independently invoke `frontend-performance` to record the safe journey in a trace. Keep the recording running through interactions, then explicitly stop it. A missing Lighthouse score does not prevent tracing, and a missing trace does not invalidate a Lighthouse score.
+5. Report Lighthouse audit results and journey diagnostics in separate sections, including their sources, dates, settings, pages, and completed/skipped steps. Only a validated Lighthouse Performance category score earns optional assessment points.
 
-**Authentication:** If the walkthrough or a test encounters login or SSO, the agent pauses for you to sign in manually in the MCP-controlled browser and waits for confirmation. It reuses that authenticated session and reruns tests interrupted by authentication; login-page results are not scored as the target app. Do not send credentials to the agent. Destructive actions, purchases, and other consequential submissions require explicit authorization.
+The companion skills also work independently:
 
-**Unavailable tools or data:** If MCP or the Lighthouse Performance category score is unavailable, the report explains why and excludes the optional criterion rather than assigning zero. The assessment does not install fallback tooling or substitute another browser. Missing individual metrics are marked `N/A` without changing an available Lighthouse score.
+> Use frontend-lighthouse to audit https://example.com.
+
+> Use frontend-performance to trace the main user journey at https://example.com.
+
+**Authentication and safety:** If the walkthrough or a measurement encounters login or SSO, the agent pauses for you to sign in manually in the browser used for that run and waits for confirmation. A standalone Chrome session does not automatically share MCP authentication. Measurements interrupted by authentication are discarded and rerun after access is restored; login/error-page results are not scored as the target app. Do not send credentials to the agent. Sending messages, uploading files, purchases, and other consequential submissions require explicit authorization; these safety exclusions are reported separately from tool limitations.
+
+**Fallbacks and unavailable data:** When the required Performance category is unsupported, the agent asks once whether you want to provide a Lighthouse JSON report or authorize a standalone run, and waits for your choice. Standalone tooling may require a separately approved temporary download and Chrome session; all caches, profiles, and output must remain outside the assessed project. No project dependencies are installed or changed, and no third-party audit service is used without permission. Imported reports are validated against the intended page and labeled with their original date/settings. If you decline or the fallback is blocked, only the missing score is `N/A` and its optional weight is excluded—not scored zero. Supported audits and traces are still reported independently. Missing individual metrics do not change an available Lighthouse score.
 
 ## Assessment Criteria and Scoring
 
@@ -91,7 +106,7 @@ Lighthouse points = round(20 * lighthouse_performance_score / 100)
 Frontend score = round(100 * earned_points / applicable_maximum)
 ```
 
-The Lighthouse category score is on a 0-100 scale; for example, 90 earns **18/20 points**. With all criteria available, the raw maximum is 120; the final score is still normalized to 100. Reports show both the normalized score and raw earned/applicable points.
+The Lighthouse category score is on a 0-100 scale; for example, 90 earns **18/20 points**. It must come from an actual supported audit, an explicitly authorized standalone run, or a validated user-provided Lighthouse report—not a journey trace or other category scores. With all criteria available, the raw maximum is 120; the final score is still normalized to 100. Reports show both the normalized score and raw earned/applicable points.
 
 - Insufficient or unverifiable git history makes both history criteria `N/A` and removes their combined 20-point weight.
 - Unverifiable release metadata makes delivery cadence `N/A`, even if commit and merge counts are available.
@@ -110,7 +125,7 @@ LCP, INP, and CLS are explanatory diagnostics, **not additional assessment point
 
 Lab/trace measurements are distinguished from field data. Field INP is marked `N/A` when representative data is unavailable; a scripted interaction or Total Blocking Time (TBT) is not a substitute. INP is not an input to Lighthouse's navigation Performance score.
 
-See the [full assessment rubric](./skills/SKILL.md) for detailed thresholds and evidence requirements. **The assessment does not run the assessed project's test suites or coverage commands**, directly or through package scripts, Nx targets, or CI workflows. It inspects test files, configuration, and existing reports/artifacts without requiring a particular test framework, installing tools, or adding instrumentation. Reports distinguish configured tests from recorded execution results and disclose when coverage is unavailable or stale. The existing no-measurable-coverage scoring rule remains unchanged. Optional browser walkthroughs and Lighthouse measurements are separate from project test execution.
+See the [assessment rubric](./skills/SKILL.md), [Lighthouse workflow](./skills/frontend-lighthouse/SKILL.md), and [performance diagnostic thresholds and workflow](./skills/frontend-performance/SKILL.md) for full instructions. **The assessment does not run the assessed project's test suites or coverage commands**, directly or through package scripts, Nx targets, or CI workflows. It inspects test files, configuration, and existing reports/artifacts without requiring a particular test framework, installing tools, or adding instrumentation. Reports distinguish configured tests from recorded execution results and disclose when coverage is unavailable or stale. The existing no-measurable-coverage scoring rule remains unchanged. Optional browser walkthroughs and Lighthouse measurements are separate from project test execution.
 
 ## Report Contents
 
@@ -121,7 +136,7 @@ Assessments are **read-only and output-only**: the complete report, including di
 - A separate repository context score for age, complexity, and active developers; this does not affect the frontend score.
 - UI-system and core-package status tables.
 - A Mermaid user-journey diagram with verified API endpoints associated with journey tasks.
-- Optional live-site results **after the journey**, including diagnostic metrics and test limitations.
+- Separate optional Lighthouse audit and journey performance results **after the journey**, including independent statuses, evidence sources, diagnostic metrics, and limitations.
 - Ranked pros and cons, followed by a verdict and highest-leverage improvements.
 
 ## Contributing
