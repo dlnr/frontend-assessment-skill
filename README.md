@@ -1,78 +1,131 @@
 # Frontend Assessment Skill
 
-An installable AI Agent Skill for Zed, Claude, and other agent systems that produces a reproducible **1-100 frontend health and maturity assessment score** for any repository.
+An installable AI agent skill for Zed, Claude, and other agent systems that produces an evidence-based **0-100 frontend health and maturity score**. It assesses repository health, maps the primary user journey, and optionally measures live-site performance.
 
 ## Installation
 
-Run via `npx`:
+Run the installer and choose a scope:
 
 ```bash
 npx frontend-assessment-skill
 ```
 
-The installer will prompt you to choose where to install the skill:
+- **Global** (`~/.agents/skills/frontend-assessment`): available across projects.
+- **Project** (`.agents/skills/frontend-assessment`): available only in the current repository.
 
-1. **Globally** (`~/.agents/skills/frontend-assessment`) — Available across all your projects in Zed / AI agents.
-2. **Project folder** (`.agents/skills/frontend-assessment`) — Installed only in the current repository.
-
-To refresh an existing installation, use `@latest` and `--update` with `--global` or `--project`. Updating replaces the installed `SKILL.md` without a confirmation prompt; it does not install the skill if it is not already present.
-
-### Command-line flags (non-interactive)
+Or select the scope with a flag:
 
 ```bash
 # Install globally
 npx frontend-assessment-skill --global
 
-# Install in current project directory
+# Install in the current project
 npx frontend-assessment-skill --project
+```
 
-# Update the globally installed skill to the latest package version
+### Updating
+
+Use `@latest` and `--update` to replace an installed skill without an overwrite prompt:
+
+```bash
+# Update the global installation
 npx frontend-assessment-skill@latest --update --global
 
-# Update the skill installed in the current project
+# Update the current project's installation
 npx frontend-assessment-skill@latest --update --project
 ```
 
----
+Updating requires an existing installation and replaces its `SKILL.md`, including local customizations. Run without `--update` to install it first.
 
-## How to Use
+## Usage
 
-Once installed, simply ask your agent in Zed (or your agent tool of choice):
+Once installed, ask your agent:
 
-> _"Perform a frontend health assessment of this repository"_
+> Perform a frontend health assessment of this repository.
 
-Or specify quarters/scopes:
+The default contributor activity and delivery window is **the last three months**. Override the scope or period explicitly:
 
-> _"Run a frontend assessment for Q3 2025 focusing on the web-app package"_
+> Run a frontend assessment for Q3 2025, focusing on the web-app package.
 
-For an optional live-site performance assessment, include `FRONTEND_ASSESSMENT_URL=https://example.com`. After walking through the primary user journey, the skill uses Chrome DevTools MCP for Lighthouse Performance and Core Web Vitals when available, replaying the journey's route changes and actions during the measured session where possible. The Lighthouse category score is worth up to 20 optional points, with LCP, INP, and CLS shown as a non-additive breakdown. Unavailable Lighthouse scores are noted and excluded from scoring. If the site requires authentication, the assessment pauses for you to sign in manually and confirm before testing continues.
+Dependency status and live measurements describe the current state, even when a historical assessment window is selected.
 
----
+### Optional Live-Site Tests
 
-## What It Evaluates
+Supply a URL in your assessment request:
 
-The skill calculates a strict, reproducible score (0–100) across 7 repository criteria. When a target URL is supplied and the Lighthouse Performance score is available through Chrome DevTools MCP, it adds up to 20 optional points based on that total Lighthouse score. LCP, INP, and CLS are listed as diagnostic score/rating breakdowns, not additional points; unavailable Lighthouse scores are noted and excluded.
+> Assess this repository with FRONTEND_ASSESSMENT_URL=https://example.com and include live-site performance.
 
-| Criterion                         | Weight | Summary                                                                                                     |
-| --------------------------------- | :----: | ----------------------------------------------------------------------------------------------------------- |
-| **Dependency freshness**          |   20   | Share of dependencies on latest/minor version and updated within 183 days                                   |
-| **Core package currency**         |   20   | Currency of core runtime, framework, router, build, and test tools                                          |
-| **Contributor diversity**         |   10   | Unique contributors in the last 12 months (diversity signal)                                                |
-| **Quarterly delivery cadence**    |   10   | Commits, merges, and releases during the assessed quarter                                                   |
-| **Test suite maturity**           |   10   | Presence of unit, integration, component, and e2e test layers                                               |
-| **Coverage**                      |   10   | Frontend code test coverage percentage                                                                      |
-| **UI system & component library** |   20   | Adoption of a single consistent component library, formal design tokens, and non-deprecated UI dependencies |
+A URL directly in the request or the `FRONTEND_ASSESSMENT_URL` environment variable also works; an explicit request takes precedence. These are assessment inputs, not installer flags.
 
----
+Live tests require **Chrome DevTools MCP** in your agent environment. The workflow is:
+
+1. Inspect the repository and map the primary user journey.
+2. Walk through the journey in the browser and record its routes, actions, and expected page states.
+3. Run Lighthouse **after the walkthrough**, replaying the journey where the workflow supports interactions. For navigation-only audits, test the entry page with Lighthouse and replay the journey in a separate performance trace where supported.
+4. Report the Lighthouse Performance category score, LCP/INP/CLS diagnostics, measurement settings, and completed or skipped journey steps. Keep page-level results and Lighthouse/trace scopes distinct.
+
+**Authentication:** If the walkthrough or a test encounters login or SSO, the agent pauses for you to sign in manually in the MCP-controlled browser and waits for confirmation. It reuses that authenticated session and reruns tests interrupted by authentication; login-page results are not scored as the target app. Do not send credentials to the agent. Destructive actions, purchases, and other consequential submissions require explicit authorization.
+
+**Unavailable tools or data:** If MCP or the Lighthouse Performance category score is unavailable, the report explains why and excludes the optional criterion rather than assigning zero. The assessment does not install fallback tooling or substitute another browser. Missing individual metrics are marked `N/A` without changing an available Lighthouse score.
+
+## Assessment Criteria and Scoring
+
+The seven repository criteria total **100 points**:
+
+| Criterion                     | Weight | Summary                                                                                                                 |
+| ----------------------------- | -----: | ----------------------------------------------------------------------------------------------------------------------- |
+| Dependency freshness          |     20 | Version lag and publication age of frontend dependencies, with an exception for latest packages with no recent releases |
+| Core package currency         |     20 | Runtime, framework, router, build, and test-tool versions, accounting for verified compatibility blockers               |
+| Contributor activity          |     10 | Unique contributors within the assessment window                                                                        |
+| Delivery cadence              |     10 | Commits, merge commits, and releases within the same window                                                             |
+| Test suite maturity           |     10 | Unit, integration, component, end-to-end, and visual/Storybook test layers                                              |
+| Coverage                      |     10 | Measurable frontend application test coverage, not backend-only coverage                                                |
+| UI system & component library |     20 | Consistent component-library, token/theme, and styling adoption, including maintenance and deprecation status           |
+
+An optional **Lighthouse Performance** criterion adds up to **20 points**:
+
+```text
+Lighthouse points = round(20 * lighthouse_performance_score / 100)
+Frontend score = round(100 * earned_points / applicable_maximum)
+```
+
+The Lighthouse category score is on a 0-100 scale; for example, 90 earns **18/20 points**. With all criteria available, the raw maximum is 120; the final score is still normalized to 100. Reports show both the normalized score and raw earned/applicable points.
+
+- Insufficient or unverifiable git history makes both history criteria `N/A` and removes their combined 20-point weight.
+- Unverifiable release metadata makes delivery cadence `N/A`, even if commit and merge counts are available.
+- No URL or no Lighthouse category score excludes its 20-point weight.
+- Apply the rubric's explicit zero-point outcomes, such as no automated tests or no measurable frontend coverage, rather than treating those findings as unavailable evidence.
+
+### Performance Diagnostics
+
+LCP, INP, and CLS are explanatory diagnostics, **not additional assessment points**. Reports list each value, its source, its individual score when the tool provides one, and its threshold rating. They do not reconstruct the Lighthouse category score from these three metrics.
+
+| Metric                          | Good      | Needs improvement      | Poor     |
+| ------------------------------- | --------- | ---------------------- | -------- |
+| Largest Contentful Paint (LCP)  | <= 2.5 s  | > 2.5 s and <= 4 s     | > 4 s    |
+| Interaction to Next Paint (INP) | <= 200 ms | > 200 ms and <= 500 ms | > 500 ms |
+| Cumulative Layout Shift (CLS)   | <= 0.1    | > 0.1 and <= 0.25      | > 0.25   |
+
+Lab/trace measurements are distinguished from field data. Field INP is marked `N/A` when representative data is unavailable; a scripted interaction or Total Blocking Time (TBT) is not a substitute. INP is not an input to Lighthouse's navigation Performance score.
+
+See the [full assessment rubric](./skills/SKILL.md) for detailed thresholds and evidence requirements. The skill uses existing repository tooling, test targets, and coverage artifacts rather than installing tools or adding instrumentation.
+
+## Report Contents
+
+- Scope, assessment dates, detected stack, model(s) used, and evidence limitations.
+- Normalized frontend score and an evidence-backed scoring table.
+- A separate repository context score for age, complexity, and active developers; this does not affect the frontend score.
+- UI-system and core-package status tables.
+- A Mermaid user-journey diagram with verified API endpoints associated with journey tasks.
+- Optional live-site results **after the journey**, including diagnostic metrics and test limitations.
+- Ranked pros and cons, followed by a verdict and highest-leverage improvements.
 
 ## Contributing
 
-Contributions are welcome! Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for local development setup, testing instructions, and the release workflow.
-
----
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development, testing, and the release workflow.
 
 ## License & Attribution
 
-This project is licensed under the [MIT License](./LICENSE) &copy; 2025 DLN Roozemond.
+Licensed under the [MIT License](./LICENSE), copyright 2025 DLN Roozemond.
 
-You are free to use, modify, and distribute this skill. When redistributing or including this skill in other packages, attribution to **DLN Roozemond** is required as detailed in the `LICENSE`.
+You may use, modify, and distribute this skill. Attribution to **DLN Roozemond** is required when redistributing it or including it in other packages, as detailed in the license.
