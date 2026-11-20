@@ -85,7 +85,7 @@ The seven repository criteria total **100 points**:
 | Coverage                      |     10 | Measurable frontend application test coverage, not backend-only coverage                                                |
 | UI system & component library |     20 | Consistent component-library, token/theme, and styling adoption, including maintenance and deprecation status           |
 
-UI-system assessment is **usage-first and brand-neutral**: the agent traces components from their imports to production renders/templates, including local wrappers and in-house systems, then verifies consumed styles and shared tokens. Installed packages and unused imports do not establish adoption. No particular styling tool or separate token package is required, and intentionally composed UI layers are not automatically treated as fragmentation. Reports cite inspected surfaces and sampling limitations.
+UI-system assessment is **usage-first and brand-neutral**: the agent traces components from their imports to production renders/templates, including local wrappers and in-house systems, then verifies consumed styles and shared tokens. Installed packages and unused imports do not establish adoption. No particular styling tool or separate token package is required, and intentionally composed UI layers are not automatically treated as fragmentation. However, concurrently shipping multiple distinct UI rendering frameworks in one deployable app caps this criterion at 5/20; separate deployable apps are assessed independently, and routers, build tools, or meta-frameworks do not count as additional UI renderers. Reports cite inspected surfaces and sampling limitations.
 
 Frontend scoring uses the seven repository criteria above and remains normalized to 100:
 
