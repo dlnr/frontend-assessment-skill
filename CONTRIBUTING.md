@@ -101,7 +101,7 @@ When editing `skills/SKILL.md`:
     - _"Run a complete frontend assessment with FRONTEND_ASSESSMENT_URL=https://example.com and include Lighthouse audits and journey tracing"_
     - _"Run a complete frontend assessment using existing test/coverage evidence only, without running project tests or generating coverage, and use all available evidence in the final verdict"_
 4. Check that:
-    - The criteria scores and total 1-100 score calculate properly.
+    - The criteria scores and normalized 0-100 score calculate properly from the applicable maximum (110 before `N/A` exclusions), including the modern-web-guidance 10-point criterion.
     - The markdown tables and breakdown formats match the desired structure.
     - The agent accurately adheres to edge-case instructions (e.g., handling monorepos, missing coverage, deprecated UI libraries).
     - UI-system findings trace imported components to production renders/templates, including aliases, re-exports, wrappers, and framework registration/auto-imports; unused imports and story/test-only usage do not count as production adoption.
@@ -110,8 +110,9 @@ When editing `skills/SKILL.md`:
     - An MCP audit excluding Performance still reports supported categories and marks unsupported categories `N/A` with exact reasons.
     - Journey traces stay active through replayed interactions, stop explicitly, and remain independent of Lighthouse availability; lab interaction timings are never substituted for field INP or a category score.
     - Authentication blocks, tool failures, and skipped consequential actions are reported as distinct limitations; the assessed project stays read-only with no generated test/coverage artifact exception.
-    - The skill is self-contained and does not invoke or require companion skills. Its report contains one verdict synthesizing all available evidence, while keeping numerical weights unchanged.
-    - Assessments only inspect test configuration/source and existing recorded test/coverage evidence. They never run project tests or coverage commands, directly or indirectly, and never offer execution as an opt-in. No particular framework or implementation approach is required; non-execution is not a failure or an extra scoring penalty.
+    - The skill is self-contained and does not invoke or require companion skills. Its report contains one verdict synthesizing all available evidence and includes the modern-web-guidance check when available, or excludes its weight when `N/A`.
+    - Assessments only inspect test configuration/source and existing recorded test/coverage evidence. They never run project tests or coverage commands, directly or indirectly, and never offer execution as an opt-in. The separate modern-web-guidance source review does not invoke project tests. No particular framework or implementation approach is required; non-execution is not a failure or an extra scoring penalty.
+    - The modern-web-guidance check cites retrieved guides and representative production paths, rewards correct solutions rather than novelty, and reports `N/A` when the service or relevant guidance is unavailable.
 
 ---
 

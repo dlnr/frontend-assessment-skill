@@ -1,6 +1,6 @@
 # Frontend Assessment Skill
 
-One installable AI agent skill for Zed, Claude, and other agent systems that produces an evidence-based **0-100 frontend health and maturity score**. `frontend-assessment` covers repository evidence, inspection of test/coverage evidence, the primary user journey, optional Lighthouse audits, and journey performance traces in one workflow and one consolidated report. No companion skills or separate invocations are required.
+One installable AI agent skill for Zed, Claude, and other agent systems that produces an evidence-based **normalized 0-100 frontend health and maturity score**. `frontend-assessment` covers repository evidence, inspection of test/coverage evidence, a quick modern-web-guidance source review, the primary user journey, optional Lighthouse audits, and journey performance traces in one workflow and one consolidated report. No companion skills or separate invocations are required.
 
 ## Installation
 
@@ -65,7 +65,7 @@ A URL directly in the request or the `FRONTEND_ASSESSMENT_URL` environment varia
 2. Walk through the journey in the browser and record its routes, safe actions, and expected page states.
 3. Run all supported Lighthouse categories **after the walkthrough**. If some categories are unsupported (for example Performance), retain and report the supported audit categories and mark unsupported categories as `N/A` with the tool-provided reason.
 4. Record the safe journey in a separate trace within the same assessment. Keep the recording running through interactions, then explicitly stop it. Missing Lighthouse categories do not prevent tracing, and a missing trace does not invalidate available Lighthouse audit findings.
-5. Return one report containing repository findings, test/coverage evidence, Lighthouse results, and journey diagnostics, followed by one verdict synthesizing all available results. Keep measurement sources, dates, settings, pages, and completed/skipped steps explicit. Lighthouse audit findings and diagnostics inform the verdict but do not add separate assessment points.
+5. Run the optional modern-web-guidance source review when available, then return one report containing repository findings, test/coverage evidence, Lighthouse results, and journey diagnostics, followed by one verdict synthesizing all available results. Keep measurement sources, dates, settings, pages, and completed/skipped steps explicit. Lighthouse audit findings and diagnostics inform the verdict but do not add separate assessment points; modern-web-guidance has its own 10-point rubric criterion.
 
 **Authentication and safety:** If the walkthrough or a measurement encounters login or SSO, the agent pauses for you to sign in manually in the browser used for that run and waits for confirmation. Measurements interrupted by authentication are discarded and rerun after access is restored; login/error-page results are not scored as the target app. Do not send credentials to the agent. Sending messages, uploading files, purchases, and other consequential submissions require explicit authorization; these safety exclusions are reported separately from tool limitations.
 
@@ -73,7 +73,7 @@ A URL directly in the request or the `FRONTEND_ASSESSMENT_URL` environment varia
 
 ## Assessment Criteria and Scoring
 
-The seven repository criteria total **100 points**:
+The eight repository criteria total **110 points** when all are applicable:
 
 | Criterion                     | Weight | Summary                                                                                                                 |
 | ----------------------------- | -----: | ----------------------------------------------------------------------------------------------------------------------- |
@@ -84,16 +84,17 @@ The seven repository criteria total **100 points**:
 | Test suite maturity           |     10 | Unit, integration, component, end-to-end, and visual/Storybook test layers                                              |
 | Coverage                      |     10 | Measurable frontend application test coverage, not backend-only coverage                                                |
 | UI system & component library |     20 | Consistent component-library, token/theme, and styling adoption, including maintenance and deprecation status           |
+| Modern web guidance           |     10 | Quick source review against relevant, retrieved current web-platform and UI guidance                                    |
 
 UI-system assessment is **usage-first and brand-neutral**: the agent traces components from their imports to production renders/templates, including local wrappers and in-house systems, then verifies consumed styles and shared tokens. Installed packages and unused imports do not establish adoption. No particular styling tool or separate token package is required, and intentionally composed UI layers are not automatically treated as fragmentation. However, concurrently shipping multiple distinct UI rendering frameworks in one deployable app caps this criterion at 5/20; separate deployable apps are assessed independently, and routers, build tools, or meta-frameworks do not count as additional UI renderers. Reports cite inspected surfaces and sampling limitations.
 
-Frontend scoring uses the seven repository criteria above and remains normalized to 100:
+Frontend scoring uses the eight repository criteria above and remains normalized to 100. The raw maximum is 110, or 90 when both history criteria are `N/A`; any other unavailable criterion is excluded from the applicable maximum.
 
 ```text
 Frontend score = round(100 * earned_points / applicable_maximum)
 ```
 
-Lighthouse audit categories and journey diagnostics are reported as evidence for the final verdict and do not add separate rubric points.
+Lighthouse audit categories and journey diagnostics are reported as evidence for the final verdict and do not add separate rubric points. The modern-web-guidance score is a separate 10-point criterion; when the tool, relevant guidance, or verifiable production UI is unavailable, mark it `N/A` and exclude its weight.
 
 - Insufficient or unverifiable git history makes both history criteria `N/A` and removes their combined 20-point weight.
 - Unverifiable release metadata makes delivery cadence `N/A`, even if commit and merge counts are available.
@@ -120,7 +121,7 @@ The [single assessment skill](./skills/SKILL.md) contains the full rubric, Light
 
 Use a single prompt:
 
-> Run a complete frontend assessment of this repository with FRONTEND_ASSESSMENT_URL=https://example.com. Include every available Lighthouse category score and journey performance diagnostic, and use all available evidence in one final verdict. Inspect existing test and coverage evidence only; do not run project tests or generate coverage.
+> Run a complete frontend assessment of this repository with FRONTEND_ASSESSMENT_URL=https://example.com. Include every available Lighthouse category score, journey performance diagnostic, and modern-web-guidance check, and use all available evidence in one final verdict. Inspect existing test and coverage evidence only; do not run project tests or generate coverage.
 
 Reports distinguish configured test layers from existing recorded results, cite their dates/scope, and disclose unavailable or stale coverage. Non-execution is not treated as failure or an additional scoring penalty. The rubric's existing no-measurable-coverage outcome is unchanged. Lighthouse audits, safe browser walkthroughs, and performance traces remain separate live-site measurements; they do not invoke project test suites.
 
@@ -133,6 +134,7 @@ Assessments are **read-only and output-only**: the complete report, including di
 - A separate repository context score for age, complexity, and active developers; this does not affect the frontend score.
 - UI-system and core-package status tables.
 - Configured test layers and existing recorded test/coverage evidence, with explicit non-execution and evidence limitations.
+- A quick, sourced modern-web-guidance check with a 0-10 score when available, or an explained `N/A`.
 - A Mermaid user-journey diagram with verified API endpoints associated with journey tasks.
 - Separate optional Lighthouse audit and journey performance results **after the journey**, including independent statuses, evidence sources, diagnostic metrics, and limitations.
 - Ranked pros and cons, followed by a consolidated verdict covering all observed results and highest-leverage improvements—not just the weighted score.

@@ -165,6 +165,10 @@ test(
         assert.equal(metadata[1], skillName);
         assert.ok(metadata[1].length <= 64);
         assert.ok(metadata[2].length <= 1024);
+        assert.match(content, /Modern Web Guidance Check/);
+        assert.match(content, /Modern web guidance\s+\|\s+10/);
+        assert.match(content, /110 points/);
+        assert.match(content, /no production UI can be verified/);
         fs.copyFileSync(source, f.source);
         const result = f.run(["--project"]);
         assert.equal(result.status, 0, result.stderr);
