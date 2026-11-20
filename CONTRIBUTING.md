@@ -94,6 +94,9 @@ When editing `skills/SKILL.md`:
    - The criteria scores and total 1-100 score calculate properly.
    - The markdown tables and breakdown formats match the desired structure.
    - The agent accurately adheres to edge-case instructions (e.g., handling monorepos, missing coverage, deprecated UI libraries).
+   - UI-system findings trace imported components to production renders/templates, including aliases, re-exports, wrappers, and framework registration/auto-imports; unused imports and story/test-only usage do not count as production adoption.
+   - A maintained in-house component system with consumed semantic CSS-variable tokens can earn the same UI-system score as a third-party equivalent without a recognized styling brand or dedicated token package.
+   - Intentionally composed component/styling layers are distinguished from competing implementations, and sampled findings state their scope rather than claiming application-wide adoption.
 
 ---
 

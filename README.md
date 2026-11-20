@@ -82,6 +82,8 @@ The seven repository criteria total **100 points**:
 | Coverage                      |     10 | Measurable frontend application test coverage, not backend-only coverage                                                |
 | UI system & component library |     20 | Consistent component-library, token/theme, and styling adoption, including maintenance and deprecation status           |
 
+UI-system assessment is **usage-first and brand-neutral**: the agent traces components from their imports to production renders/templates, including local wrappers and in-house systems, then verifies consumed styles and shared tokens. Installed packages and unused imports do not establish adoption. No particular styling tool or separate token package is required, and intentionally composed UI layers are not automatically treated as fragmentation. Reports cite inspected surfaces and sampling limitations.
+
 An optional **Lighthouse Performance** criterion adds up to **20 points**:
 
 ```text
@@ -108,9 +110,11 @@ LCP, INP, and CLS are explanatory diagnostics, **not additional assessment point
 
 Lab/trace measurements are distinguished from field data. Field INP is marked `N/A` when representative data is unavailable; a scripted interaction or Total Blocking Time (TBT) is not a substitute. INP is not an input to Lighthouse's navigation Performance score.
 
-See the [full assessment rubric](./skills/SKILL.md) for detailed thresholds and evidence requirements. The skill uses existing repository tooling, test targets, and coverage artifacts rather than installing tools or adding instrumentation.
+See the [full assessment rubric](./skills/SKILL.md) for detailed thresholds and evidence requirements. **The assessment does not run the assessed project's test suites or coverage commands**, directly or through package scripts, Nx targets, or CI workflows. It inspects test files, configuration, and existing reports/artifacts without requiring a particular test framework, installing tools, or adding instrumentation. Reports distinguish configured tests from recorded execution results and disclose when coverage is unavailable or stale. The existing no-measurable-coverage scoring rule remains unchanged. Optional browser walkthroughs and Lighthouse measurements are separate from project test execution.
 
 ## Report Contents
+
+Assessments are **read-only and output-only**: the complete report, including diagrams, is returned directly in the agent's response. The assessment does not create, modify, or delete files in the assessed project, including reports, scratch notes such as `history-tests.md`, helper scripts, or browser artifacts. Required browser-tool artifacts must use temporary storage outside the project; otherwise the affected measurement is skipped and disclosed.
 
 - Scope, assessment dates, detected stack, model(s) used, and evidence limitations.
 - Normalized frontend score and an evidence-backed scoring table.
