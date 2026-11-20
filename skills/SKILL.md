@@ -275,11 +275,14 @@ List the five most significant cons in ranked order:
 
 ### Frontend business logic diagram
 
-Include a low-level Mermaid `flowchart` tracing the main frontend business flows from routes/pages and user actions through relevant components, state management, domain/business logic, and API/data-access layers to their data sources and endpoints. Show meaningful request/response or state transitions where they are evident from the code.
+Include a low-level Mermaid `flowchart` tracing representative frontend business flows from routes/pages and user actions through components, state management, domain logic, and API/data-access layers to data sources and endpoints. Make request, response, and state-update directions explicit.
 
-- Inspect the frontend source, routing, state/data-fetching code, API clients, and configuration; represent only verified flows and label unknowns rather than inventing behavior.
-- Include backend services and other dependencies that are outside the assessed frontend code. For a monorepo, distinguish services/packages found elsewhere in the repository from services hosted outside the repository. Show external API/service endpoint names or URLs when discoverable; if configured via an environment variable, show the variable name (never its secret value) and mark the destination unresolved if necessary.
-- Keep the diagram focused on business logic and data flow rather than a generic infrastructure overview. Use Mermaid syntax in a fenced `mermaid` block.
+- Inspect frontend source, routing, state/data-fetching code, API clients, and configuration. Represent only verified flows; label unknowns and do not infer behavior from names alone.
+- Distinguish the frontend, backend/services in the same repository (including other monorepo packages), and services outside the repository. Show external service/API endpoint names or base URLs when discoverable. If configured via an environment variable, show its name but never its secret value; mark the destination unresolved when it cannot be determined.
+- Connect authentication to the requests it protects: show how tokens/credentials are acquired, passed through the API client or auth wrapper, and attached to protected requests only when confirmed by code. Do not leave auth nodes disconnected from the API flow.
+- Draw request edges from the caller/client to the endpoint and separate response edges back to the data-access/state layer. Label each with the verified HTTP method and route where available. Do not use a generic API node as an ambiguous hub for unrelated calls; group routes under a service only when their shared base/service is verified, and keep endpoint/request nodes distinct enough to trace each flow.
+- Show branching, retries, redirects, fallbacks, and error paths only when verified. Distinguish a configured base URL from the routes appended to it; do not imply a fallback or route transformation unless implementation confirms it.
+- Keep the diagram focused on business logic and data flow rather than a generic infrastructure overview. Use unique Mermaid node IDs and valid Mermaid flowchart syntax in a fenced `mermaid` block; avoid overly dense diagrams by grouping related operations where their relationships remain clear.
 
 ### Verdict
 
