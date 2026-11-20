@@ -175,6 +175,16 @@ Score each applicable criterion independently. When at least three months of his
 | Coverage                                 |     10 | `10` >= 80%; `8` 70-79%; `6` 60-69%; `3` 40-59%; `1` 1-39%; `0` no measurable coverage found. Use the most relevant frontend coverage number, not backend-only coverage.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | UI system & component library            |     20 | Assess the component library, tokens/theme, and styling approach (including CSS-in-JS) together. `20` single modern component library used consistently with formal design tokens and a maintained, consistent styling approach; `15` single component library used consistently with design tokens/theme and a maintained styling approach (minor lag or isolated deviations); `10` single component library without formal tokens OR custom design system without token library; `5` mixed/competing component libraries or styling approaches (fragmented UI) OR deprecated library with migration underway; `0` deprecated/unmaintained UI library as primary UI, severe library fragmentation, or no component library/tokens. CSS-in-JS use alone does not increase the score; assess its consistency, maintenance status, and integration with the UI system. |
 
+## Repository Context Rubric
+
+Report this context score separately. **Do not add it to or subtract it from the 100-point frontend assessment score.**
+
+| Context factor      | Points | How to score                                                                                                                                                                                                                                                                                                                                    |
+| ------------------- | -----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository age      |    0-3 | `0` < 3 months old; `1` 3-11 months; `2` 1-2 years; `3` >= 3 years. Use first commit date.                                                                                                                                                                                                                                                      |
+| Frontend complexity |    0-4 | `0` no clear frontend app; `1` exactly one frontend app/package and no shared frontend packages; `2` one deployable frontend app plus one or more shared frontend packages; `3` two or more frontend apps or a monorepo frontend workspace; `4` two or more deployable frontend apps plus shared frontend libraries or a design system package. |
+| Active developers   |    0-3 | `0` 0 active contributors in last 12 months; `1` 1; `2` 2-3; `3` >= 4. Use the same contributor count as the main rubric.                                                                                                                                                                                                                       |
+
 ## Important Scoring Rules
 
 1. **Do not make up evidence.**
@@ -183,7 +193,7 @@ Score each applicable criterion independently. When at least three months of his
 4. **Penalize deprecated and fragmented UI libraries.** Using deprecated UI packages or mixing multiple competing component libraries directly reduces the UI system score.
 5. **Reward consistent single component library and design token usage.** Full points require a single unified component library paired with a design system and token library.
 6. **Keep the rubric fixed.** If you must diverge, explain exactly why.
-7. Consider repository age, complexity, and active developer count when interpreting evidence, but do not use them to change rubric scores beyond the history-availability rule above.
+7. **Do not use repository age, complexity, or team size to adjust the 100-point score.** Report them only in the separate repository context rubric.
 
 ## Required Output
 
@@ -194,6 +204,7 @@ Return the assessment in this structure:
 - repository / app(s) assessed
 - assessment window (last three months)
 - detected stack
+- model(s) used to run the assessment; use the agent/model name if available, otherwise `Unknown`
 - detected UI system & component library: `<names of detected libraries or "None">`
 - detected design tokens / theme library: `<names of detected token packages or "None">`
 - detected styling approach, including any CSS-in-JS usage in JavaScript/JSX: `<brief description, or "None detected">`
@@ -206,16 +217,27 @@ If history-based criteria are `N/A`, also report the raw score and applicable ma
 
 ### Scoring table
 
-| Criterion                                |                          Weight | Evidence                                                                                              |                      Score | Notes |
-| ---------------------------------------- | ------------------------------: | ----------------------------------------------------------------------------------------------------- | -------------------------: | ----- |
-| Dependency freshness                     |                              20 | ...                                                                                                   |                        ... | ...   |
-| Core package currency                    |                              20 | ...                                                                                                   |                        ... | ...   |
-| Contributors, last 3 months              |                              10 | ...                                                                                                   |                        ... | ...   |
-| Last 3 months: commits, merges, releases |                              10 | ...                                                                                                   |                        ... | ...   |
-| Test suite maturity                      |                              10 | ...                                                                                                   |                        ... | ...   |
-| Coverage                                 |                              10 | ...                                                                                                   |                        ... | ...   |
-| UI system & component library            |                              20 | ... (Names of used component libraries & token libraries, consistency status, and deprecation status) |                        ... | ...   |
-| **Total**                                | **100** (or applicable maximum) | ... raw earned/applicable points                                                                      | **<normalized total>/100** | ...   |
+| Criterion                                |                          Weight | Evidence                                                                                              |                      Score | Model(s) used | Notes |
+| ---------------------------------------- | ------------------------------: | ----------------------------------------------------------------------------------------------------- | -------------------------: | ------------- | ----- |
+| Dependency freshness                     |                              20 | ...                                                                                                   |                        ... | ...           | ...   |
+| Core package currency                    |                              20 | ...                                                                                                   |                        ... | ...           | ...   |
+| Contributors, last 3 months              |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
+| Last 3 months: commits, merges, releases |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
+| Test suite maturity                      |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
+| Coverage                                 |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
+| UI system & component library            |                              20 | ... (Names of used component libraries & token libraries, consistency status, and deprecation status) |                        ... | ...           | ...   |
+| **Total**                                | **100** (or applicable maximum) | ... raw earned/applicable points                                                                      | **<normalized total>/100** |               | ...   |
+
+### Repository context score
+
+Report this separate context rubric. It must not affect the frontend assessment score:
+
+| Context factor          | Evidence                                  |          Score |
+| ----------------------- | ----------------------------------------- | -------------: |
+| Repository age          | ...                                       |            ... |
+| Frontend complexity     | ...                                       |            ... |
+| Active developers       | ...                                       |            ... |
+| **Total context score** | Not included in frontend assessment score | **<total>/10** |
 
 ### UI system & component library status
 
