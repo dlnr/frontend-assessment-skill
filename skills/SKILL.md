@@ -1,301 +1,217 @@
 ---
 name: frontend-assessment
-
-description: Assess frontend health and maturity. USE WHEN the user asks for a "frontend assessment", "frontend health check", "frontend review", "frontend score", or wants a reproducible 1-100 score for dependency freshness, core package currency, contributor activity, delivery cadence, testing, coverage, and UI system & component library adoption.
----
-
+description: Assess frontend health and maturity. Use when the user asks for a frontend assessment, health check, review, or reproducible 0-100 score for dependencies, contributor activity, delivery cadence, testing, coverage, UI system adoption, and optional live-site performance.
 ---
 
 # Frontend Assessment
 
-Produce a reproducible **1-100 frontend assessment score** for the current repository.
+Produce an evidence-based, stack-aware **0-100 frontend assessment score** for the current repository. Cite repository paths, command results, and browser measurements so another reviewer can reproduce the assessment.
 
-## User Instructions
+## Inputs and Execution Order
 
 $ARGUMENTS
 
-Respect any explicit scope, quarter, or stack instructions from the user. If the user does not provide a quarter, assess the **most recently completed calendar quarter**.
+- Respect the user's app/package scope and stack instructions.
+- Use the **last three months** for contributor activity and delivery cadence unless the user specifies a quarter or another period. Resolve exact start and end dates once and use them consistently for both criteria. Dependency status and live measurements describe the current state, not a historical snapshot.
+- Accept an optional target URL directly in the request, as `FRONTEND_ASSESSMENT_URL=https://...` in the skill arguments, or from the `FRONTEND_ASSESSMENT_URL` environment variable. An explicit request/argument takes precedence over the environment variable.
 
-## Goal
+Execute in this order:
 
-Measure frontend health in a way that is:
+1. Establish scope and detect the stack.
+2. Collect repository evidence.
+3. Map the primary user journey and, when browser access is available, walk through it.
+4. If a URL was supplied, run Lighthouse and replay the journey during performance measurement.
+5. Calculate scores and write the report.
 
-- **reproducible**: use the same rubric every time
-- **stack-aware**: evaluate the frontend framework/runtime actually in use
-- **evidence-based**: do not guess; cite repo evidence and command output
-- **portable**: works for monorepos, single-app repos, and different frontend stacks
+Use repository-native tooling and existing CI/test targets. Do not install tools or add instrumentation just to produce the assessment. For Nx workspaces, use the existing Nx targets through the workspace's package manager.
 
-## Assessment Scope
+## 1. Scope and Stack
 
-1. Identify the frontend surface being assessed.
-    - In a monorepo, prefer the primary deployable frontend application(s).
-    - If the repo contains multiple frontend apps and the user did not narrow scope, assess the main production-facing app(s) plus shared frontend libraries used by them.
-    - State the scope explicitly in the report.
-2. Detect the package manager from lockfiles and use the workspace-native tooling.
-3. Prefer direct evidence from:
-    - `package.json` and relevant app/library manifests
-    - lockfiles
-    - build/test/project configuration
-    - git history
-    - GitHub releases / PR metadata
-    - UI system and design token package manifests & deprecation metadata
+Identify the primary deployable frontend app(s). Unless the user narrows scope, include the main production-facing apps and the shared frontend libraries they consume. State the scope explicitly.
 
-## Stack Detection
+Detect the package manager from lockfiles. Inspect manifests, lockfiles, build/test configuration, source code, git history, release metadata, and UI package deprecation metadata.
 
-Detect the frontend stack first. Typical examples:
+| Category             | Examples                                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| UI runtime/framework | `react`, `vue`, `@angular/core`, `svelte`, `next`, `@remix-run/*`, `nuxt`                                            |
+| Router               | Framework router, `react-router`, `react-router-dom`, `@tanstack/react-router`                                       |
+| Build tool           | `vite`, `webpack`, `rspack`, `parcel`                                                                                |
+| Test tools           | `jest`, `vitest`, `cypress`, `@playwright/test`, Storybook                                                           |
+| Component library    | `@mui/*`, `antd`, `@chakra-ui/*`, `@mantine/*`, `@radix-ui/*`, shadcn (`components.json`), an in-house design system |
+| Tokens/theme         | `style-dictionary`, `@tokens-studio/*`, dedicated token packages, formal CSS variables/theme definitions             |
+| Styling              | CSS/Sass, utility classes, `tailwindcss`, `@vanilla-extract/*`, `styled-components`, `@emotion/*`                    |
 
-| Category                | Candidate packages                                                                                                                                                                             |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| UI runtime              | `react`, `vue`, `angular`, `svelte`                                                                                                                                                            |
-| App framework           | `next`, `remix`, `@remix-run/*`, `gatsby`, `nuxt`                                                                                                                                              |
-| Router                  | `react-router`, `react-router-dom`, `@tanstack/router`, framework router                                                                                                                       |
-| Build tool              | `vite`, `webpack`, `rspack`, `parcel`                                                                                                                                                          |
-| Test tools              | `jest`, `vitest`, `cypress`, `playwright`                                                                                                                                                      |
-| UI component library    | `@mui/*`, `@chakra-ui/*`, `antd`, `@mantine/*`, `@radix-ui/*`, `shadcn` (`components.json`), `@carbon/*`, `@fluentui/*`, `react-bootstrap`, `@shoelace-style/*`, in-house/custom design system |
-| Design tokens / Styling | `style-dictionary`, `@tokens-studio/*`, design token packages, `tailwindcss`, `@vanilla-extract/*`, `styled-components`, `@emotion/*`, CSS variables/theme tokens                              |
+Use equivalent core packages for the detected stack rather than requiring these examples.
 
-When a stack-specific package from the user's examples is not present, substitute the equivalent core package(s) for that stack.
+## 2. Repository Evidence
 
-## Data Collection
+### Dependency Freshness
 
-### 1. Dependency freshness
+Assess direct production dependencies used by the scoped frontend and shared libraries, plus frontend-critical development dependencies such as build, test, and Storybook tools.
 
-Assess direct dependencies that materially affect the frontend:
+Record each package's installed/resolved version, latest version, installed-version publication date, and major/minor/patch lag. Use the workspace's package manager and registry metadata; npm examples include `npm outdated --json` and `npm view <package> version time --json`.
 
-- production dependencies used by the frontend app(s)
-- shared frontend libraries they consume
-- dev dependencies only when they are frontend-critical (for example `vite`, `webpack`, `storybook`, `jest`, `vitest`, `playwright`, `cypress`)
+### Core Package Currency
 
-Use existing package manager commands and registry metadata. Prefer:
+Select a short list covering the runtime/framework, router where applicable, build tool, and core test runner. For lagging packages, verify whether peer dependencies or framework compatibility block an upgrade. Use installed dependency trees, plugin peer ranges, and registry metadata such as `npm ls <package>` and `npm view <package> peerDependencies --json`.
 
-- `npm outdated --json`
-- `npm view <package> version time --json`
-- lockfile/package manifest inspection
+### Contributor Activity and Delivery Cadence
 
-For each assessed package, determine:
+Check the oldest reachable commit and `git rev-parse --is-shallow-repository` before scoring history. If the available history does not cover the assessment window, or a shallow checkout prevents verification, mark **both history criteria `N/A`**. Do not treat missing history as zero activity.
 
-- installed/resolved version
-- latest published version
-- publish date of installed/resolved version
-- whether the package is behind latest major/minor/patch
+For the same assessment window, collect:
 
-### 2. Core package currency
+- Unique authors, using git's mailmap-aware `%aN <%aE>` format.
+- Total commits and merge commits across reachable refs.
+- GitHub Releases published in the window, using `gh api repos/<owner>/<repo>/releases --paginate` when available. Distinguish a verified absence of releases (`0`) from unavailable release metadata; note tag-based or other release mechanisms. If release metadata cannot be verified, mark delivery cadence `N/A` and report the available commit/merge counts without scoring them.
 
-Build a short list of core frontend packages for the detected stack. This should usually include:
+Use `git --no-pager log` and `git rev-list --count` with explicit date bounds and `--all`. Record the bounds and counts. Count contributors as a diversity signal, not a popularity measure.
 
-- one runtime/framework package
-- one router package if applicable
-- one build tool package
-- one test runner if the stack depends on it for core developer workflow
+### Test Suites and Coverage
 
-If a core package is not on the latest version, determine whether it is:
+Identify configured unit, integration, component, end-to-end, and visual/Storybook checks from scripts, configuration, CI, and test files. Run existing commands only when needed to confirm the test surface or obtain coverage.
 
-- intentionally blocked by a peer dependency or framework compatibility constraint
-- simply behind with no clear blocker
+Prefer existing frontend coverage artifacts and coverage-enabled targets over new instrumentation. Report the most relevant frontend application percentage, its metric (for example, lines or statements), and its source; do not substitute backend-only coverage. Note additional figures separately.
 
-Useful evidence sources:
+### UI System and Component Library
 
-- `npm view <package> peerDependencies --json`
-- `npm ls <package>`
-- framework/plugin package peer ranges
+Inspect dependencies **and source usage** to establish:
 
-### 3. Contributor activity
+- Component libraries and in-house design systems in use.
+- Formal design token packages and theme definitions.
+- Styling approaches, including CSS-in-JS authored in JavaScript/JSX; distinguish runtime-generated and compiled styles where evident.
+- Consistency of component, token, and styling adoption across the scoped apps.
+- Installed/latest versions, maintenance status, and deprecations, using metadata such as `npm view <package> deprecated --json`.
 
-First determine whether the available git history spans at least three months by checking the oldest reachable commit (for example, `git log --all --format=%cI | sort | sed -n '1p'`) and whether the checkout is shallow (`git rev-parse --is-shallow-repository`). If it does, count unique contributors over the last three months:
+Treat CSS-in-JS as an approach, not a package category or an automatic scoring benefit. Assess its consistency, maintenance, and integration with the UI system.
 
-```bash
-git log --since="3 months ago" --format='%aN <%aE>' --all | sort -u
-```
+## 3. Primary User Journey
 
-Use the unique author list count as the metric. This is a diversity signal, not a popularity contest. If the repository has less than three months of available history, or a shallow clone prevents confirming the history span, mark this criterion `N/A` rather than treating missing history as zero contributors.
+Inspect routes/pages, UI components, and interaction logic to identify a representative user's main goal, starting point, and successful outcome. Map only verified steps, including important alternate, blocked, or recovery paths. Do not infer behavior or endpoints from names alone.
 
-### 4. Three-month delivery cadence
+Prepare a Mermaid `journey` diagram organized into user-facing sections, with tasks in order, actor(s), and 1-5 experience ratings. Use observed UX evidence for ratings; otherwise use a neutral `3` and label it as an estimate. These experience ratings do not affect the assessment score.
 
-For the last three months, count:
+Associate verified API calls with journey tasks. List HTTP methods, routes, and service/base URLs where discoverable. Show environment variable names instead of secret values and mark unresolved destinations. If there is no verifiable user-facing journey or no endpoint calls, say so instead of inventing them.
 
-- commits
-- merges
-- releases
+When a target URL and Chrome DevTools MCP are available, follow the authentication procedure below, then walk through the journey **before auditing performance**. Record an ordered replay plan with routes, actions, and expected page states. Avoid destructive actions, real purchases, or other consequential submissions without explicit authorization; record skipped steps. If browser access is unavailable, use the source-verified journey and label it as not browser-verified.
 
-Prefer:
+## 4. Optional Live-Site Performance
 
-```bash
-git rev-list --count --since="3 months ago" --all
-git rev-list --count --merges --since="3 months ago" --all
-gh api repos/<owner>/<repo>/releases --paginate
-```
+### Availability and Authentication
 
-Use GitHub Releases in the same three-month window where available. If there are no GitHub releases, record `0` and note if the repo appears to release by tags or another mechanism. If the repository has less than three months of available history, or a shallow clone prevents confirming the history span, mark this criterion `N/A` rather than treating unavailable history as zero activity.
+- No URL: skip live measurement without changing the repository-only score.
+- Chrome DevTools MCP unavailable: add a report note and leave Lighthouse unscored. Do not install tooling or substitute another browser.
+- Login, SSO, or another authentication challenge during the walkthrough or either measurement: pause, ask the user to sign in manually in the MCP-controlled browser, and **wait for confirmation**. Do not request, enter, or store credentials or bypass access controls.
+- After confirmation, verify the intended app page is available in the same authenticated session. Preserve session storage/cookies needed for access. If a test redirects to authentication, discard that test's results and rerun after access is restored; never score the login page as the target app. If access remains blocked, report the limitation and leave affected measurements unavailable.
 
-### 5. Test suites
+### Journey-Based Measurement
 
-Determine whether the application uses automated tests and which layers exist:
+After the walkthrough:
 
-- unit
-- integration
-- component
-- e2e
-- visual/storybook checks
+1. Inspect the available MCP capabilities. Use a journey-capable Lighthouse workflow when supported; otherwise combine a navigation audit with a journey trace where available. Do not assume every audit tool exposes a Performance category score.
+2. Use the supplied URL as the entry point and reuse the authenticated browser session. If the Lighthouse workflow supports journey interactions, replay the verified actions in order. If it only audits a single navigation, audit the entry page and replay the journey in the separate performance trace; clearly distinguish these scopes.
+3. When using a trace, keep it running through the replayed interactions, then stop it. Record completed/skipped steps and reasons, actual URLs, measurement date, browser/tool versions where available, device/viewport, throttling, and cache settings. Use consistent settings for comparable runs.
+4. Capture the Lighthouse **Performance category score (0-100)** when exposed. Do not derive it from unrelated audit categories, trace timings, or the three diagnostics below. An unavailable category score makes the optional criterion `N/A`, even if other diagnostics were captured.
+5. Report LCP, INP, and CLS with their source and units. Keep navigation/page results distinct in multi-page traces; do not combine unrelated pages into a synthetic metric. Distinguish lab/trace results from representative field data.
 
-Use repo configuration and scripts first. Only run existing test commands when needed to discover coverage or confirm a configured test surface.
+### Metric Breakdown (Diagnostic Only)
 
-### 6. Coverage
+| Metric | Good      | Needs improvement      | Poor     |
+| ------ | --------- | ---------------------- | -------- |
+| LCP    | <= 2.5 s  | > 2.5 s and <= 4 s     | > 4 s    |
+| INP    | <= 200 ms | > 200 ms and <= 500 ms | > 500 ms |
+| CLS    | <= 0.1    | > 0.1 and <= 0.25      | > 0.25   |
 
-Prefer existing coverage artifacts or CI/test configuration over inventing new instrumentation:
+List each metric's value, individual score when provided by the tool, and threshold rating. Convert tool-provided 0-1 metric scores to 0-100 and label the scale. If no numeric score is provided, report the threshold rating rather than inventing a numeric score.
 
-- `coverage/` directories
-- CI settings
-- `jest` / `vitest` / `nyc` / `cypress` coverage configuration
-- existing `--coverage` scripts
+Rate INP only from representative field data (typically the 75th percentile across visits). A lab interaction can be reported as a diagnostic but does not establish field INP; mark unavailable field INP `N/A`. Never substitute Total Blocking Time (TBT) for INP. Explain that INP is not an input to Lighthouse's navigation Performance score, and the LCP/INP/CLS breakdown alone does not reconstruct that score.
 
-If multiple coverage figures exist, report the most relevant frontend application coverage and note any additional figures.
+These diagnostics add **no assessment points**. Missing individual metrics do not change an available Lighthouse category score or its weight.
 
-### 7. UI system and component library
+## 5. Scoring
 
-Inspect the project dependencies and source code to identify and assess:
+The repository criteria total **100 points**. Add the optional **20-point Lighthouse criterion** only when a URL was supplied and its Performance category score was obtained through Chrome DevTools MCP. Exclude both history weights when the assessment window cannot be verified.
 
-- **Detected component libraries**: Name all UI component libraries in use (e.g. `@mui/*`, `antd`, `@chakra-ui/*`, `@mantine/*`, `@radix-ui/*`, `shadcn`, `@carbon/*`, `@fluentui/*`, `react-bootstrap`, in-house component library, etc.).
-- **Detected design tokens / theme libraries**: Identify design token packages and formal theme tokens (e.g. `style-dictionary`, `@tokens-studio/*`, dedicated token packages, CSS variables/theme definitions).
-- **Detected styling approach**: Inspect the source for CSS-in-JS usage—styling authored in JavaScript or JSX, such as style objects, tagged-template styles, or styling expressions—and note whether it is runtime-generated or compiled where evident. Treat CSS-in-JS as a coding approach, not a package category.
-- **Consistency**: Verify whether a **single component library** is used consistently across the application and whether the styling approach is consistent, or if multiple competing UI libraries or styling systems are mixed.
-- **Deprecation check**: Check if any detected UI library or token package is deprecated using `npm view <package> deprecated --json` or known deprecation status.
-- **Adoption & version currency**: Evaluate if the component library and design system are actively used across the app and on supported versions.
+Calculate `applicable_maximum` as the sum of weights for scored criteria, then `normalized_score = round(100 * earned_points / applicable_maximum)`. Report both the normalized score and raw earned/applicable points. For example, the maximum is 100 (80 without history), or 120 (100 without history) when Lighthouse is scored; exclude any other criterion marked `N/A` as well. Unavailable evidence is not a measured zero, but apply explicit rubric outcomes such as no measurable coverage found. If no criterion can be scored, report the assessment as unavailable instead of dividing by zero.
 
-## Scoring Rubric
+| Criterion                           | Weight | Scoring                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------- | -----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependency freshness                |     20 | `round(20 * fresh_ratio)`. A package is fresh if it is latest or at most one minor behind within the same major, and its installed version was published within 183 days. Treat latest packages with no releases in 183 days as current rather than stale. `fresh_ratio` is the share of assessed packages meeting these rules.                                                                                                                                         |
+| Core package currency               |     20 | `20`: all latest or latest compatible, with compatibility blockers verified and documented. Otherwise: `15` for patch/minor-only lag; `8` for exactly one unblocked one-major lag and no larger lag; `0` for multiple unblocked one-major lags or any unblocked lag of more than one major. Do not count verified latest-compatible packages as unblocked lag.                                                                                                          |
+| Contributors, assessment window     |     10 | `10`: >= 4 contributors; `8`: 3; `6`: 2; `3`: 1; `0`: none. `N/A` if history is insufficient.                                                                                                                                                                                                                                                                                                                                                                           |
+| Delivery cadence, assessment window |     10 | Add commits (`>=50`: 4; `20-49`: 3; `5-19`: 2; `1-4`: 1; `0`: 0), merges (`>=15`: 3; `5-14`: 2; `1-4`: 1; `0`: 0), and releases (`>=2`: 3; `1`: 2; `0`: 0). `N/A` if history is insufficient or release metadata cannot be verified.                                                                                                                                                                                                                                    |
+| Test suite maturity                 |     10 | `10`: unit plus integration/e2e/component tests across meaningful flows; `7`: at least two test layers; `4`: one automated layer; `0`: no automated tests found.                                                                                                                                                                                                                                                                                                        |
+| Coverage                            |     10 | `10`: >= 80%; `8`: >= 70% and < 80%; `6`: >= 60% and < 70%; `3`: >= 40% and < 60%; `1`: > 0% and < 40%; `0`: zero or no measurable frontend coverage found.                                                                                                                                                                                                                                                                                                             |
+| UI system & component library       |     20 | `20`: one modern component library, formal tokens, and consistent maintained styling; `15`: one consistent library with tokens/theme and minor lag or isolated deviations; `10`: one library without formal tokens, or a custom design system without a token library; `5`: competing libraries/styling systems, or a deprecated library with migration underway; `0`: primary UI is deprecated/unmaintained, severely fragmented, or lacks a component library/tokens. |
+| Lighthouse Performance (optional)   |     20 | `round(20 * lighthouse_performance_score / 100)`. No separate points for LCP, INP, or CLS. `N/A` if no URL, MCP access, or category score.                                                                                                                                                                                                                                                                                                                              |
 
-Score each applicable criterion independently. When at least three months of history are available, score all criteria and sum to **100**. If less than three months of history are available (or a shallow clone prevents verifying the span), mark both history-based criteria as `N/A`, do not score them as zero, and exclude their combined 20 points from the denominator. Normalize the earned points against the remaining applicable maximum to produce a score out of 100, and report both the raw earned/available points and normalized score.
+Keep the rubric fixed and explain any necessary deviation. Do not invent missing evidence or hide major core-package problems. Repository age, complexity, and developer counts beyond the contributor criterion must not adjust this score.
 
-| Criterion                                | Weight | How to score                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ---------------------------------------- | -----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dependency freshness                     |     20 | `score = round(20 * fresh_ratio)` where `fresh_ratio` is the share of assessed packages that are both on latest version **or** at most one minor behind **and** whose installed version is not older than 183 days. If a package has had no release in the last 183 days at all, treat it as neutral rather than stale if the installed version is latest.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Core package currency                    |     20 | `20` all core packages latest or latest compatible and blockers are documented; `15` only minor lag or documented peer/framework blockers; `8` one core package is one major behind without blocker; `0` multiple core packages are one major behind or any core package is more than one major behind without blocker.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Contributors, last 3 months              |     10 | `10` >= 4 contributors; `8` 3 contributors; `6` 2 contributors; `3` 1 contributor; `0` 0 contributors. Cap at 10 so very large teams do not dominate the score. If available history is shorter than three months or cannot be verified, mark `N/A` and exclude this weight from the score denominator.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Last 3 months: commits, merges, releases |     10 | Score three sub-parts and add them: commits `0-4` (`>=50` = 4, `20-49` = 3, `5-19` = 2, `1-4` = 1, `0` = 0), merges `0-3` (`>=15` = 3, `5-14` = 2, `1-4` = 1, `0` = 0), releases `0-3` (`>=2` = 3, `1` = 2, `0` = 0). If available history is shorter than three months or cannot be verified, mark `N/A` and exclude this weight from the score denominator.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Test suite maturity                      |     10 | `10` unit plus integration/e2e/component coverage across meaningful app flows; `7` at least two test layers; `4` one automated test layer only; `0` no automated tests found.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Coverage                                 |     10 | `10` >= 80%; `8` 70-79%; `6` 60-69%; `3` 40-59%; `1` 1-39%; `0` no measurable coverage found. Use the most relevant frontend coverage number, not backend-only coverage.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| UI system & component library            |     20 | Assess the component library, tokens/theme, and styling approach (including CSS-in-JS) together. `20` single modern component library used consistently with formal design tokens and a maintained, consistent styling approach; `15` single component library used consistently with design tokens/theme and a maintained styling approach (minor lag or isolated deviations); `10` single component library without formal tokens OR custom design system without token library; `5` mixed/competing component libraries or styling approaches (fragmented UI) OR deprecated library with migration underway; `0` deprecated/unmaintained UI library as primary UI, severe library fragmentation, or no component library/tokens. CSS-in-JS use alone does not increase the score; assess its consistency, maintenance status, and integration with the UI system. |
+### Separate Repository Context Score
 
-## Repository Context Rubric
+Report this context score independently; do not add it to or subtract it from the frontend assessment.
 
-Report this context score separately. **Do not add it to or subtract it from the 100-point frontend assessment score.**
+| Factor              | Points | Scoring                                                                                                                                                                                                                                                                                     |
+| ------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository age      |    0-3 | From the first commit: `0`: < 3 months; `1`: 3 to < 12 months; `2`: 1 to < 3 years; `3`: >= 3 years. Note unverified age in shallow checkouts.                                                                                                                                              |
+| Frontend complexity |    0-4 | `0`: no clear app; `1`: one app/package, no shared frontend packages; `2`: one deployable app plus shared frontend packages; `3`: multiple frontend apps or a frontend monorepo not meeting the next tier; `4`: multiple deployable apps plus shared frontend libraries or a design system. |
+| Active developers   |    0-3 | Use the same assessment-window contributor count: `0`: none; `1`: one; `2`: 2-3; `3`: >= 4. Mark `N/A` if the window cannot be verified.                                                                                                                                                    |
 
-| Context factor      | Points | How to score                                                                                                                                                                                                                                                                                                                                    |
-| ------------------- | -----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository age      |    0-3 | `0` < 3 months old; `1` 3-11 months; `2` 1-2 years; `3` >= 3 years. Use first commit date.                                                                                                                                                                                                                                                      |
-| Frontend complexity |    0-4 | `0` no clear frontend app; `1` exactly one frontend app/package and no shared frontend packages; `2` one deployable frontend app plus one or more shared frontend packages; `3` two or more frontend apps or a monorepo frontend workspace; `4` two or more deployable frontend apps plus shared frontend libraries or a design system package. |
-| Active developers   |    0-3 | `0` 0 active contributors in last 12 months; `1` 1; `2` 2-3; `3` >= 4. Use the same contributor count as the main rubric.                                                                                                                                                                                                                       |
+## Required Report
 
-## Important Scoring Rules
-
-1. **Do not make up evidence.**
-2. **Do not average away major problems.** If a core package is badly outdated, reflect that sharply.
-3. **Do not over-penalize stable packages** that are latest even if the ecosystem has been quiet for more than 6 months.
-4. **Penalize deprecated and fragmented UI libraries.** Using deprecated UI packages or mixing multiple competing component libraries directly reduces the UI system score.
-5. **Reward consistent single component library and design token usage.** Full points require a single unified component library paired with a design system and token library.
-6. **Keep the rubric fixed.** If you must diverge, explain exactly why.
-7. **Do not use repository age, complexity, or team size to adjust the 100-point score.** Report them only in the separate repository context rubric.
-
-## Required Output
-
-Return the assessment in this structure:
+Keep the report concise, cite evidence, and use this order. The score summary is presented first for readability even though scoring happens after measurement.
 
 ### Scope
 
-- repository / app(s) assessed
-- assessment window (last three months)
-- detected stack
-- model(s) used to run the assessment; use the agent/model name if available, otherwise `Unknown`
-- detected UI system & component library: `<names of detected libraries or "None">`
-- detected design tokens / theme library: `<names of detected token packages or "None">`
-- detected styling approach, including any CSS-in-JS usage in JavaScript/JSX: `<brief description, or "None detected">`
+State the repository/apps, exact assessment window, detected stack and package manager, UI libraries, tokens/theme, styling approach (including CSS-in-JS), and model(s) used (`Unknown` if unavailable). Include the target URL/MCP status and material evidence limitations.
 
-### Score summary
+### Score Summary and Scoring Table
 
-`Frontend assessment score: <total>/100`
+`Frontend assessment score: <normalized>/100 (<earned>/<applicable maximum> applicable points)`
 
-If history-based criteria are `N/A`, also report the raw score and applicable maximum, for example: `Frontend assessment score: 90/100 (72/80 applicable points)`.
+Use one row per scoring criterion above, followed by a total. Mark unavailable criteria `N/A` and explain their exclusion. Do not put LCP, INP, or CLS in this scoring table.
 
-### Scoring table
+| Criterion | Weight | Evidence | Score | Model(s) used | Notes |
+| --------- | -----: | -------- | ----: | ------------- | ----- |
 
-| Criterion                                |                          Weight | Evidence                                                                                              |                      Score | Model(s) used | Notes |
-| ---------------------------------------- | ------------------------------: | ----------------------------------------------------------------------------------------------------- | -------------------------: | ------------- | ----- |
-| Dependency freshness                     |                              20 | ...                                                                                                   |                        ... | ...           | ...   |
-| Core package currency                    |                              20 | ...                                                                                                   |                        ... | ...           | ...   |
-| Contributors, last 3 months              |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
-| Last 3 months: commits, merges, releases |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
-| Test suite maturity                      |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
-| Coverage                                 |                              10 | ...                                                                                                   |                        ... | ...           | ...   |
-| UI system & component library            |                              20 | ... (Names of used component libraries & token libraries, consistency status, and deprecation status) |                        ... | ...           | ...   |
-| **Total**                                | **100** (or applicable maximum) | ... raw earned/applicable points                                                                      | **<normalized total>/100** |               | ...   |
+### Repository Context Score
 
-### Repository context score
+List each context factor's evidence and score, plus raw earned/applicable context points (normally out of 10). Note that it is excluded from the frontend assessment score.
 
-Report this separate context rubric. It must not affect the frontend assessment score:
+### UI System & Component Library Status
 
-| Context factor          | Evidence                                  |          Score |
-| ----------------------- | ----------------------------------------- | -------------: |
-| Repository age          | ...                                       |            ... |
-| Frontend complexity     | ...                                       |            ... |
-| Active developers       | ...                                       |            ... |
-| **Total context score** | Not included in frontend assessment score | **<total>/10** |
+| Library / Package | Role (Components / Tokens / Styling) | Installed | Latest | Deprecated? | Consistency & Notes |
+| ----------------- | ------------------------------------ | --------- | ------ | ----------- | ------------------- |
 
-### UI system & component library status
+Describe styling approaches separately from package names; CSS-in-JS itself is not a package.
 
-Include a breakdown of detected UI component library and design token packages. Describe styling approaches—including any CSS-in-JS usage found in JavaScript/JSX—separately; do not report CSS-in-JS itself as a package.
+### Core Package Status
 
-| Library / Package | Role (Component library / Tokens / Styling) | Installed version | Latest version | Deprecated? | Consistency & Notes |
-| ----------------- | ------------------------------------------- | ----------------- | -------------- | ----------- | ------------------- |
+| Package | Current | Latest | Status | Upgrade blocker? |
+| ------- | ------- | ------ | ------ | ---------------- |
 
-### Core package status
+### Frontend User Journey Diagram
 
-Include a compact table for the detected core packages:
+Include the Mermaid `journey` diagram prepared in step 3, associated verified endpoints, and walkthrough limitations. Do not replace it with an architecture or API-plumbing diagram.
 
-| Package | Current | Latest | Status | Blocked by dependency? |
-| ------- | ------- | ------ | ------ | ---------------------- |
+### Optional Live-Site Performance Results
 
-### Top 5 pros
+Place results **after the journey**. If no URL was supplied, use one short note. Otherwise include:
 
-List the five strongest pros in ranked order:
+- Lighthouse Performance category score, the calculation `round(20 * score / 100)`, and earned points out of 20, or why the criterion is `N/A`.
+- Measurement settings, replayed/skipped journey steps, audited pages, and the distinction between Lighthouse and trace scopes.
+- The diagnostic table below. Mark missing values/scores `N/A`; missing diagnostics do not remove an available Lighthouse score. Do not imply that these three metrics sum to the category score.
 
-1. ...
-2. ...
-3. ...
-4. ...
-5. ...
+| Metric | Value and units | Individual score (0-100) | Threshold rating | Source / Page / Limitations |
+| ------ | --------------- | -----------------------: | ---------------- | --------------------------- |
+| LCP    | ...             |                      ... | ...              | ...                         |
+| INP    | ...             |                      ... | ...              | ...                         |
+| CLS    | ...             |                      ... | ...              | ...                         |
 
-### Top 5 cons
+### Top 5 Pros and Top 5 Cons
 
-List the five most significant cons in ranked order:
-
-1. ...
-2. ...
-3. ...
-4. ...
-5. ...
-
-### Frontend business logic diagram
-
-Include a low-level Mermaid `flowchart` tracing representative frontend business flows from routes/pages and user actions through components, state management, domain logic, and API/data-access layers to data sources and endpoints. Make request, response, and state-update directions explicit.
-
-- Inspect frontend source, routing, state/data-fetching code, API clients, and configuration. Represent only verified flows; label unknowns and do not infer behavior from names alone.
-- Distinguish the frontend, backend/services in the same repository (including other monorepo packages), and services outside the repository. Show external service/API endpoint names or base URLs when discoverable. If configured via an environment variable, show its name but never its secret value; mark the destination unresolved when it cannot be determined.
-- Connect authentication to the requests it protects: show how tokens/credentials are acquired, passed through the API client or auth wrapper, and attached to protected requests only when confirmed by code. Do not leave auth nodes disconnected from the API flow.
-- Draw request edges from the caller/client to the endpoint and separate response edges back to the data-access/state layer. Label each with the verified HTTP method and route where available. Do not use a generic API node as an ambiguous hub for unrelated calls; group routes under a service only when their shared base/service is verified, and keep endpoint/request nodes distinct enough to trace each flow.
-- Show branching, retries, redirects, fallbacks, and error paths only when verified. Distinguish a configured base URL from the routes appended to it; do not imply a fallback or route transformation unless implementation confirms it.
-- Keep the diagram focused on business logic and data flow rather than a generic infrastructure overview. Use unique Mermaid node IDs and valid Mermaid flowchart syntax in a fenced `mermaid` block; avoid overly dense diagrams by grouping related operations where their relationships remain clear.
+Provide two ranked lists of the strongest evidence-backed advantages and highest-impact problems. If fewer than five are supported, say so rather than inventing findings.
 
 ### Verdict
 
-End with:
-
-- one short paragraph explaining what drove the score
-- one short paragraph naming the highest-leverage improvements
-
-If either history-based criterion is `N/A`, do not cite the overall score as being driven by contribution or delivery-cadence factors, and do not discuss those factors in the verdict. Base the verdict only on the scored criteria and note the unavailable history outside the verdict (in the scope or scoring table).
-
-## Behavior Notes
-
-- Prefer repository-native commands and existing CI/test scripts.
-- Do not install new tooling just to produce the assessment.
-- For Nx workspaces, use `npm nx` / `npx nx` and existing targets rather than bypassing Nx.
-- Keep the result concise, but include enough evidence that another reviewer can reproduce the score.
+End with two short paragraphs: what drove the score, then the highest-leverage improvements. Discuss only scored criteria as score drivers. If history criteria are `N/A`, keep unavailable contributor/cadence findings in the scope or scoring table, not the verdict.
