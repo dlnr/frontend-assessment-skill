@@ -7,11 +7,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const cliPath = fileURLToPath(new URL("../bin/cli.js", import.meta.url));
-const skills = [
-    { name: "frontend-assessment", source: "SKILL.md" },
-    { name: "frontend-lighthouse", source: "frontend-lighthouse/SKILL.md" },
-    { name: "frontend-performance", source: "frontend-performance/SKILL.md" },
-];
+const skillName = "frontend-assessment";
+const companions = ["frontend-lighthouse", "frontend-performance"];
 
 function write(file, content) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -19,30 +16,33 @@ function write(file, content) {
 }
 
 function fixture(t) {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "frontend-skills-cli-"));
+    const root = fs.mkdtempSync(
+        path.join(os.tmpdir(), "frontend-assessment-cli-"),
+    );
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const installer = path.join(root, "installer");
     const project = path.join(root, "project");
     const home = path.join(root, "home");
     const cli = path.join(installer, "bin", "cli.js");
+    const source = path.join(installer, "skills", "SKILL.md");
     write(path.join(installer, "package.json"), '{"type":"module"}\n');
     fs.mkdirSync(path.dirname(cli), { recursive: true });
     fs.copyFileSync(cliPath, cli);
     fs.mkdirSync(project);
     fs.mkdirSync(home);
-    for (const { name, source } of skills) {
-        write(
-            path.join(installer, "skills", source),
-            `---\nname: ${name}\n---\nBundled ${name} 📊\n`,
-        );
-    }
+    write(
+        source,
+        `---\nname: ${skillName}\ndescription: Assess frontend health.\n---\nBundled assessment 📊\r\n`,
+    );
 
     return {
         project,
         home,
-        source: (skill) => path.join(installer, "skills", skill.source),
-        target: (skill, base = project) =>
-            path.join(base, ".agents", "skills", skill.name, "SKILL.md"),
+        source,
+        target: (base = project) =>
+            path.join(base, ".agents", "skills", skillName, "SKILL.md"),
+        companion: (name, base = project) =>
+            path.join(base, ".agents", "skills", name),
         run(args = [], input = "") {
             const result = spawnSync(process.execPath, [cli, ...args], {
                 cwd: project,
@@ -59,14 +59,15 @@ function fixture(t) {
     };
 }
 
-function tree(directory) {
+function tree(directory, excludedFile) {
     return fs
         .readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => path.join(directory, entry.name) !== excludedFile)
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((entry) => [
             entry.name,
             entry.isDirectory()
-                ? tree(path.join(directory, entry.name))
+                ? tree(path.join(directory, entry.name), excludedFile)
                 : fs
                       .readFileSync(path.join(directory, entry.name))
                       .toString("hex"),
@@ -74,66 +75,108 @@ function tree(directory) {
 }
 
 function assertInstalled(f, base = f.project) {
-    for (const skill of skills) {
-        assert.deepEqual(
-            fs.readFileSync(f.target(skill, base)),
-            fs.readFileSync(f.source(skill)),
+    assert.deepEqual(
+        fs.readFileSync(f.target(base)),
+        fs.readFileSync(f.source),
+    );
+}
+
+function assertOnlyPrimaryInstalled(f, base = f.project) {
+    assertInstalled(f, base);
+    assert.deepEqual(fs.readdirSync(path.join(base, ".agents", "skills")), [
+        skillName,
+    ]);
+    assert.deepEqual(fs.readdirSync(path.dirname(f.target(base))), [
+        "SKILL.md",
+    ]);
+}
+
+function seedPriorInstall(f, base = f.project) {
+    write(f.target(base), "old primary\n");
+    write(
+        path.join(path.dirname(f.target(base)), "references", "custom.md"),
+        "keep primary customization\n",
+    );
+    for (const name of companions) {
+        write(path.join(f.companion(name, base), "SKILL.md"), `old ${name}\n`);
+        write(
+            path.join(f.companion(name, base), "references", "custom.md"),
+            `keep ${name} customization\n`,
         );
     }
+    write(
+        path.join(base, ".agents", "skills", "other", "SKILL.md"),
+        "keep another skill\n",
+    );
+    write(path.join(base, "keep.txt"), "keep unrelated project file\n");
+}
+
+function assertMigrationNote(result, names = companions) {
+    assert.match(result.stdout, /Migration note/);
+    assert.match(
+        result.stdout,
+        /Older standalone companions remain untouched and are no longer needed/,
+    );
+    for (const name of names) assert.ok(result.stdout.includes(name));
+}
+
+for (const [flag, scope] of [
+    ["--project", "project"],
+    ["-p", "project"],
+    ["--global", "home"],
+    ["-g", "home"],
+]) {
+    test(
+        `fresh ${flag} install copies only the primary skill`,
+        { timeout: 10000 },
+        (t) => {
+            const f = fixture(t);
+            const result = f.run([flag]);
+            assert.equal(result.status, 0, result.stderr);
+            assertOnlyPrimaryInstalled(f, f[scope]);
+            assert.deepEqual(
+                tree(scope === "project" ? f.home : f.project),
+                [],
+            );
+            assert.match(
+                result.stdout,
+                /Successfully installed frontend-assessment/,
+            );
+            assert.doesNotMatch(result.stdout, /Migration note|Overwrite/);
+            for (const name of companions)
+                assert.ok(!result.stdout.includes(name));
+        },
+    );
 }
 
 test(
-    "project install copies all three skill sources to their mapped destinations",
+    "real bundled main source has valid metadata and installs byte-for-byte",
     { timeout: 10000 },
     (t) => {
         const f = fixture(t);
+        const source = fileURLToPath(
+            new URL("../skills/SKILL.md", import.meta.url),
+        );
+        const content = fs.readFileSync(source, "utf8");
+        const metadata = content.match(
+            /^---\r?\nname: ([a-z0-9]+(?:-[a-z0-9]+)*)\r?\ndescription: ([^\r\n]+)\r?\n---/,
+        );
+        assert.ok(metadata, "Missing main skill metadata");
+        assert.equal(metadata[1], skillName);
+        assert.ok(metadata[1].length <= 64);
+        assert.ok(metadata[2].length <= 1024);
+        fs.copyFileSync(source, f.source);
         const result = f.run(["--project"]);
         assert.equal(result.status, 0, result.stderr);
-        assertInstalled(f);
+        assertOnlyPrimaryInstalled(f);
+        assert.deepEqual(fs.readFileSync(f.target()), fs.readFileSync(source));
         assert.deepEqual(tree(f.home), []);
-        for (const { name } of skills) assert.ok(result.stdout.includes(name));
-    },
-);
-
-test(
-    "real bundled skills have valid metadata and install byte-for-byte",
-    { timeout: 10000 },
-    (t) => {
-        const f = fixture(t);
-        for (const skill of skills) {
-            const source = fileURLToPath(
-                new URL(`../skills/${skill.source}`, import.meta.url),
-            );
-            const content = fs.readFileSync(source, "utf8");
-            const metadata = content.match(
-                /^---\r?\nname: ([a-z0-9]+(?:-[a-z0-9]+)*)\r?\ndescription: ([^\r\n]+)\r?\n---/,
-            );
-            assert.ok(metadata, `Missing skill metadata: ${skill.source}`);
-            assert.equal(metadata[1], skill.name);
-            assert.ok(metadata[1].length <= 64);
-            assert.ok(metadata[2].length <= 1024);
-            fs.copyFileSync(source, f.source(skill));
-        }
-        const result = f.run(["--project"]);
-        assert.equal(result.status, 0, result.stderr);
-        assertInstalled(f);
-    },
-);
-
-test(
-    "global install uses an isolated home and leaves the project untouched",
-    { timeout: 10000 },
-    (t) => {
-        const f = fixture(t);
-        const result = f.run(["-g"]);
-        assert.equal(result.status, 0, result.stderr);
-        assertInstalled(f, f.home);
-        assert.deepEqual(tree(f.project), []);
     },
 );
 
 for (const [label, input, scope] of [
     ["project selection", "2\n", "project"],
+    ["global selection", "1\n", "home"],
     ["default global selection", "\n", "home"],
 ]) {
     test(`interactive install supports ${label}`, { timeout: 10000 }, (t) => {
@@ -142,10 +185,9 @@ for (const [label, input, scope] of [
         assert.equal(result.status, 0, result.stderr);
         assert.match(
             result.stdout,
-            /Where would you like to install all three skills/,
+            /Where would you like to install frontend-assessment/,
         );
-        for (const { name } of skills) assert.ok(result.stdout.includes(name));
-        assertInstalled(f, f[scope]);
+        assertOnlyPrimaryInstalled(f, f[scope]);
         assert.deepEqual(tree(scope === "project" ? f.home : f.project), []);
     });
 }
@@ -159,180 +201,245 @@ test("interactive cancellation writes nothing", { timeout: 10000 }, (t) => {
     assert.deepEqual(tree(f.home), []);
 });
 
-test(
-    "legacy --update replaces the primary and adds both missing companions",
-    { timeout: 10000 },
-    (t) => {
-        const f = fixture(t);
-        write(f.target(skills[0]), "legacy primary\n");
-        const result = f.run(["--project", "--update"]);
-        assert.equal(result.status, 0, result.stderr);
-        assertInstalled(f);
-        assert.doesNotMatch(result.stdout, /Overwrite/);
-    },
-);
-
-test(
-    "update replaces all bundled skill files but preserves unrelated files",
-    { timeout: 10000 },
-    (t) => {
-        const f = fixture(t);
-        const unrelated = [];
-        for (const skill of skills) {
-            write(f.target(skill), `old ${skill.name}\n`);
-            const extra = path.join(
-                path.dirname(f.target(skill)),
-                "references",
-                "custom.md",
-            );
-            write(extra, `Keep ${skill.name}\n`);
-            unrelated.push([extra, fs.readFileSync(extra)]);
-        }
-        const otherSkill = path.join(
-            f.project,
-            ".agents",
-            "skills",
-            "other",
-            "SKILL.md",
-        );
-        write(otherSkill, "Keep another skill\n");
-        unrelated.push([otherSkill, fs.readFileSync(otherSkill)]);
-
-        const result = f.run(["-p", "-u"]);
-        assert.equal(result.status, 0, result.stderr);
-        assertInstalled(f);
-        assert.doesNotMatch(result.stdout, /Overwrite/);
-        for (const [file, content] of unrelated)
-            assert.deepEqual(fs.readFileSync(file), content);
-    },
-);
-
-for (const companionsExist of [false, true]) {
+for (const [scope, flags] of [
+    ["project", ["--project", "--update"]],
+    ["home", ["-g", "-u"]],
+]) {
     test(
-        `update without primary rejects without writes (companions: ${companionsExist})`,
+        `legacy primary-only ${scope} update creates no companions`,
         { timeout: 10000 },
         (t) => {
             const f = fixture(t);
-            write(path.join(f.project, "keep.txt"), "preserve me\n");
-            if (companionsExist) {
-                for (const skill of skills.slice(1))
-                    write(f.target(skill), "existing companion\n");
-            }
-            const before = tree(f.project);
-            const result = f.run(["--project", "--update"]);
-            assert.equal(result.status, 1, result.stdout);
-            assert.match(result.stderr, /No installed skill found to update/);
-            assert.deepEqual(tree(f.project), before);
-            assert.deepEqual(tree(f.home), []);
+            write(f.target(f[scope]), "legacy primary\n");
+            const result = f.run(flags);
+            assert.equal(result.status, 0, result.stderr);
+            assertOnlyPrimaryInstalled(f, f[scope]);
+            assert.doesNotMatch(result.stdout, /Overwrite|Migration note/);
+            assert.match(
+                result.stdout,
+                /Successfully updated frontend-assessment/,
+            );
+            assert.deepEqual(
+                tree(scope === "project" ? f.home : f.project),
+                [],
+            );
+        },
+    );
+
+    test(
+        `prior three-skill ${scope} update preserves companions and custom files`,
+        { timeout: 10000 },
+        (t) => {
+            const f = fixture(t);
+            const base = f[scope];
+            seedPriorInstall(f, base);
+            const before = tree(base, f.target(base));
+            const result = f.run(flags);
+            assert.equal(result.status, 0, result.stderr);
+            assertInstalled(f, base);
+            assert.deepEqual(tree(base, f.target(base)), before);
+            assert.doesNotMatch(result.stdout, /Overwrite/);
+            assertMigrationNote(result);
+            assert.deepEqual(
+                tree(scope === "project" ? f.home : f.project),
+                [],
+            );
         },
     );
 }
 
-for (const skill of skills) {
-    for (const answer of ["n\n", "\n"]) {
+for (const scope of ["project", "home"]) {
+    for (const companionsExist of [false, true]) {
         test(
-            `declining a ${skill.name} collision with ${JSON.stringify(answer)} preserves everything`,
+            `missing primary ${scope} update writes nothing (companions: ${companionsExist})`,
             { timeout: 10000 },
             (t) => {
                 const f = fixture(t);
-                write(f.target(skill), "existing skill: must not change\n");
+                const base = f[scope];
+                write(path.join(base, "keep.txt"), "preserve me\n");
                 write(
-                    path.join(path.dirname(f.target(skill)), "custom.md"),
-                    "keep this too\n",
+                    path.join(path.dirname(f.target(base)), "custom.md"),
+                    "a primary directory alone is not an installed skill\n",
                 );
-                const before = tree(f.project);
-                const result = f.run(["--project"], answer);
-                assert.equal(result.status, 0, result.stderr);
-                assert.equal(
-                    (result.stdout.match(/Overwrite existing files/g) || [])
-                        .length,
-                    1,
-                );
-                assert.ok(result.stdout.includes(f.target(skill)));
-                assert.match(result.stdout, /cancelled/);
-                assert.deepEqual(tree(f.project), before);
-                assert.deepEqual(tree(f.home), []);
-            },
-        );
-    }
-}
-
-test(
-    "normal install asks once for all collisions and accepts confirmation",
-    { timeout: 10000 },
-    (t) => {
-        const f = fixture(t);
-        for (const skill of skills)
-            write(f.target(skill), `old ${skill.name}\n`);
-        const extra = path.join(path.dirname(f.target(skills[1])), "custom.md");
-        write(extra, "keep\n");
-        const result = f.run(["--project"], " YeS \n");
-        assert.equal(result.status, 0, result.stderr);
-        assert.equal(
-            (result.stdout.match(/Overwrite existing files/g) || []).length,
-            1,
-        );
-        for (const skill of skills)
-            assert.ok(result.stdout.includes(f.target(skill)));
-        assertInstalled(f);
-        assert.equal(fs.readFileSync(extra, "utf8"), "keep\n");
-    },
-);
-
-for (const skill of skills) {
-    for (const invalidSource of ["missing", "directory"]) {
-        test(
-            `${invalidSource} ${skill.name} source fails before any destination writes`,
-            { timeout: 10000 },
-            (t) => {
-                const f = fixture(t);
-                fs.unlinkSync(f.source(skill));
-                if (invalidSource === "directory")
-                    fs.mkdirSync(f.source(skill));
-                const before = tree(f.project);
-                const result = f.run(["--project"]);
+                if (companionsExist) {
+                    for (const name of companions) {
+                        write(
+                            path.join(f.companion(name, base), "SKILL.md"),
+                            "existing companion\n",
+                        );
+                    }
+                }
+                const before = tree(base);
+                const result = f.run([
+                    scope === "project" ? "--project" : "--global",
+                    "--update",
+                ]);
                 assert.equal(result.status, 1, result.stdout);
-                assert.ok(result.stderr.includes(f.source(skill)));
-                assert.deepEqual(tree(f.project), before);
-                assert.deepEqual(tree(f.home), []);
+                assert.match(
+                    result.stderr,
+                    /No installed skill found to update/,
+                );
+                assert.deepEqual(tree(base), before);
+                assert.deepEqual(
+                    tree(scope === "project" ? f.home : f.project),
+                    [],
+                );
+                if (companionsExist) assertMigrationNote(result);
             },
         );
     }
 }
 
-test(
-    "invalid companion source during update preserves every installed file",
-    { timeout: 10000 },
-    (t) => {
-        const f = fixture(t);
-        for (const skill of skills)
-            write(f.target(skill), `old ${skill.name}\n`);
-        fs.unlinkSync(f.source(skills[2]));
-        const before = tree(f.project);
-        const result = f.run(["--project", "--update"]);
-        assert.equal(result.status, 1, result.stdout);
-        assert.deepEqual(tree(f.project), before);
-    },
-);
-
-for (const help of ["--help", "-h"]) {
+for (const answer of ["n\n", "\n"]) {
     test(
-        `${help} explains all skills and update requirements without sources or writes`,
+        `normal overwrite declined with ${JSON.stringify(answer)} preserves everything`,
         { timeout: 10000 },
         (t) => {
             const f = fixture(t);
-            for (const skill of skills) fs.unlinkSync(f.source(skill));
+            seedPriorInstall(f);
+            const before = tree(f.project);
+            const result = f.run(["--project"], answer);
+            assert.equal(result.status, 0, result.stderr);
+            assert.equal(
+                (result.stdout.match(/Overwrite existing file/g) || []).length,
+                1,
+            );
+            assert.ok(result.stdout.includes(f.target()));
+            assert.match(result.stdout, /cancelled/);
+            assert.deepEqual(tree(f.project), before);
+            assert.deepEqual(tree(f.home), []);
+            assertMigrationNote(result);
+        },
+    );
+}
+
+for (const answer of ["y\n", " YeS \n"]) {
+    test(
+        `normal overwrite accepted with ${JSON.stringify(answer)} changes only the primary`,
+        { timeout: 10000 },
+        (t) => {
+            const f = fixture(t);
+            seedPriorInstall(f);
+            const before = tree(f.project, f.target());
+            const result = f.run(["-p"], answer);
+            assert.equal(result.status, 0, result.stderr);
+            assert.equal(
+                (result.stdout.match(/Overwrite existing file/g) || []).length,
+                1,
+            );
+            assert.ok(result.stdout.includes(f.target()));
+            assertInstalled(f);
+            assert.deepEqual(tree(f.project, f.target()), before);
+            assert.deepEqual(tree(f.home), []);
+            assertMigrationNote(result);
+        },
+    );
+}
+
+test(
+    "companions alone do not trigger overwrite confirmation",
+    { timeout: 10000 },
+    (t) => {
+        const f = fixture(t);
+        for (const name of companions) {
+            write(path.join(f.companion(name), "SKILL.md"), `keep ${name}\n`);
+        }
+        const before = companions.map((name) => tree(f.companion(name)));
+        const result = f.run(["--project"]);
+        assert.equal(result.status, 0, result.stderr);
+        assertInstalled(f);
+        assert.deepEqual(
+            companions.map((name) => tree(f.companion(name))),
+            before,
+        );
+        assert.deepEqual(fs.readdirSync(path.dirname(f.target())), [
+            "SKILL.md",
+        ]);
+        assert.doesNotMatch(result.stdout, /Overwrite/);
+        assertMigrationNote(result);
+        assert.deepEqual(tree(f.home), []);
+    },
+);
+
+test(
+    "an empty legacy companion directory is detected and preserved",
+    { timeout: 10000 },
+    (t) => {
+        const f = fixture(t);
+        fs.mkdirSync(f.companion(companions[0]), { recursive: true });
+        const result = f.run(["--project"]);
+        assert.equal(result.status, 0, result.stderr);
+        assertInstalled(f);
+        assert.deepEqual(tree(f.companion(companions[0])), []);
+        assert.equal(fs.existsSync(f.companion(companions[1])), false);
+        assertMigrationNote(result, [companions[0]]);
+        assert.deepEqual(tree(f.home), []);
+    },
+);
+
+for (const invalidSource of ["missing", "directory"]) {
+    for (const mode of ["fresh", "overwrite", "update"]) {
+        test(
+            `${invalidSource} source preflight preserves data during ${mode}`,
+            { timeout: 10000 },
+            (t) => {
+                const f = fixture(t);
+                if (mode !== "fresh") seedPriorInstall(f);
+                write(
+                    path.join(f.project, "keep.txt"),
+                    "preserve project data\n",
+                );
+                write(path.join(f.home, "keep.txt"), "preserve home data\n");
+                fs.unlinkSync(f.source);
+                if (invalidSource === "directory") fs.mkdirSync(f.source);
+                const projectBefore = tree(f.project);
+                const homeBefore = tree(f.home);
+                const result = f.run(
+                    mode === "update"
+                        ? ["--project", "--update"]
+                        : ["--project"],
+                    "yes\n",
+                );
+                assert.equal(result.status, 1, result.stdout);
+                assert.match(result.stderr, /Unable to read source skill file/);
+                assert.ok(result.stderr.includes(f.source));
+                assert.doesNotMatch(result.stdout, /Overwrite/);
+                assert.deepEqual(tree(f.project), projectBefore);
+                assert.deepEqual(tree(f.home), homeBefore);
+            },
+        );
+    }
+}
+
+for (const help of ["--help", "-h"]) {
+    test(
+        `${help} explains the unified skill without requiring a source or writing files`,
+        { timeout: 10000 },
+        (t) => {
+            const f = fixture(t);
+            fs.rmSync(path.dirname(f.source), { recursive: true });
             const result = f.run([help]);
             assert.equal(result.status, 0, result.stderr);
-            for (const { name } of skills)
-                assert.ok(result.stdout.includes(name));
+            assert.match(result.stdout, /Frontend Assessment Skill Installer/);
+            assert.match(result.stdout, /unified frontend-assessment skill/);
             assert.match(result.stdout, /--global/);
             assert.match(result.stdout, /--project/);
             assert.match(result.stdout, /--update/);
-            assert.match(result.stdout, /add missing companions/);
+            assert.match(
+                result.stdout,
+                /Replace only frontend-assessment\/SKILL\.md/,
+            );
             assert.match(
                 result.stdout,
                 /Requires an existing frontend-assessment\/SKILL\.md/,
+            );
+            assert.match(
+                result.stdout,
+                /Older standalone companions remain untouched and are no longer needed/,
+            );
+            assert.doesNotMatch(
+                result.stdout,
+                /all three|add missing companions/,
             );
             assert.deepEqual(tree(f.project), []);
             assert.deepEqual(tree(f.home), []);
