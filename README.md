@@ -1,6 +1,6 @@
 # Frontend Assessment Skill
 
-One installable AI agent skill for Zed, Claude, and other agent systems that produces an evidence-based **normalized 0-100 frontend health and maturity score**. `frontend-assessment` covers repository evidence, inspection of test/coverage evidence, a quick modern-web-guidance source review, the primary user journey, optional Lighthouse audits, and journey performance traces in one workflow and one consolidated report. No companion skills or separate invocations are required.
+One installable AI agent skill for Zed, Claude, and other agent systems that produces an evidence-based **normalized 0-100 frontend health and maturity score**. `frontend-assessment` covers repository evidence, inspection of test/coverage evidence, a quick modern-web-guidance source review, an application architecture map, optional Lighthouse audits, and interaction performance traces in one workflow and one consolidated report. No companion skills or separate invocations are required.
 
 ## Installation
 
@@ -51,23 +51,23 @@ The default contributor activity and delivery window is **the last three months*
 
 Dependency status and live measurements describe the current state, even when a historical assessment window is selected.
 
-### Optional Live-Site Audits and Journey Tracing
+### Optional Live-Site Audits and Interaction Tracing
 
 Supply a URL in your assessment request:
 
-> Assess this repository with FRONTEND_ASSESSMENT_URL=https://example.com and include live-site Lighthouse audits and journey tracing.
+> Assess this repository with FRONTEND_ASSESSMENT_URL=https://example.com and include live-site Lighthouse audits and interaction tracing.
 
 A URL directly in the request or the `FRONTEND_ASSESSMENT_URL` environment variable also works; an explicit request takes precedence. These are assessment inputs, not installer flags.
 
-**Chrome DevTools MCP** supports the browser walkthrough and journey tracing. Lighthouse capabilities are checked separately; some MCP `lighthouse_audit` tools explicitly exclude Performance. The workflow is:
+**Chrome DevTools MCP** supports browser inspection and interaction tracing. Lighthouse capabilities are checked separately; some MCP `lighthouse_audit` tools explicitly exclude Performance. The workflow is:
 
-1. Inspect the repository and map the primary user journey.
-2. Walk through the journey in the browser and record its routes, safe actions, and expected page states.
-3. Run all supported Lighthouse categories **after the walkthrough**. If some categories are unsupported (for example Performance), retain and report the supported audit categories and mark unsupported categories as `N/A` with the tool-provided reason.
-4. Record the safe journey in a separate trace within the same assessment. Keep the recording running through interactions, then explicitly stop it. Missing Lighthouse categories do not prevent tracing, and a missing trace does not invalidate available Lighthouse audit findings.
-5. Run the optional modern-web-guidance source review when available, then return one report containing repository findings, test/coverage evidence, Lighthouse results, and journey diagnostics, followed by one verdict synthesizing all available results. Keep measurement sources, dates, settings, pages, and completed/skipped steps explicit. Lighthouse audit findings and diagnostics inform the verdict but do not add separate assessment points; modern-web-guidance has its own 10-point rubric criterion.
+1. Inspect the repository and map the frontend components, verified API endpoints, backend services, and persistence layers. Color-code rendered UI components by their verified UI framework and include a legend.
+2. When browser access is available, inspect representative pages and safely exercise non-consequential controls to verify visible states and observable network calls. Do not create a user-journey diagram.
+3. Run all supported Lighthouse categories **after browser inspection**. If some categories are unsupported (for example Performance), retain and report the supported audit categories and mark unsupported categories as `N/A` with the tool-provided reason.
+4. Record selected safe interactions in a separate trace within the same assessment. Keep the recording running through interactions, then explicitly stop it. Missing Lighthouse categories do not prevent tracing, and a missing trace does not invalidate available Lighthouse audit findings.
+5. Run the optional modern-web-guidance source review when available, then return one report containing repository findings, test/coverage evidence, the architecture map, Lighthouse results, and interaction diagnostics, followed by one verdict synthesizing all available results. Keep measurement sources, dates, settings, pages, and completed/skipped actions explicit. Lighthouse audit findings and diagnostics inform the verdict but do not add separate assessment points; modern-web-guidance has its own 10-point rubric criterion.
 
-**Authentication and safety:** If the walkthrough or a measurement encounters login or SSO, the agent pauses for you to sign in manually in the browser used for that run and waits for confirmation. Measurements interrupted by authentication are discarded and rerun after access is restored; login/error-page results are not scored as the target app. Do not send credentials to the agent. Sending messages, uploading files, purchases, and other consequential submissions require explicit authorization; these safety exclusions are reported separately from tool limitations.
+**Authentication and safety:** If browser inspection or a measurement encounters login or SSO, the agent pauses for you to sign in manually in the browser used for that run and waits for confirmation. Measurements interrupted by authentication are discarded and rerun after access is restored; login/error-page results are not scored as the target app. Do not send credentials to the agent. Sending messages, uploading files, purchases, and other consequential submissions require explicit authorization; these safety exclusions are reported separately from tool limitations.
 
 **Unavailable categories and data:** If the MCP audit does not expose a category, the report keeps available audit results and marks unsupported categories as `N/A` with the exact limitation. Missing individual diagnostics do not change the rubric score.
 
@@ -94,7 +94,7 @@ Frontend scoring uses the eight repository criteria above and remains normalized
 Frontend score = round(100 * earned_points / applicable_maximum)
 ```
 
-Lighthouse audit categories and journey diagnostics are reported as evidence for the final verdict and do not add separate rubric points. The modern-web-guidance score is a separate 10-point criterion; when the tool, relevant guidance, or verifiable production UI is unavailable, mark it `N/A` and exclude its weight.
+Lighthouse audit categories and interaction diagnostics are reported as evidence for the final verdict and do not add separate rubric points. The modern-web-guidance score is a separate 10-point criterion; when the tool, relevant guidance, or verifiable production UI is unavailable, mark it `N/A` and exclude its weight.
 
 - Insufficient or unverifiable git history makes both history criteria `N/A` and removes their combined 20-point weight.
 - Unverifiable release metadata makes delivery cadence `N/A`, even if commit and merge counts are available.
@@ -121,9 +121,9 @@ The [single assessment skill](./skills/SKILL.md) contains the full rubric, Light
 
 Use a single prompt:
 
-> Run a complete frontend assessment of this repository with FRONTEND_ASSESSMENT_URL=https://example.com. Include every available Lighthouse category score, journey performance diagnostic, and modern-web-guidance check, and use all available evidence in one final verdict. Inspect existing test and coverage evidence only; do not run project tests or generate coverage.
+> Run a complete frontend assessment of this repository with FRONTEND_ASSESSMENT_URL=https://example.com. Include the frontend/backend architecture map, every available Lighthouse category score, interaction performance diagnostics, and modern-web-guidance check, and use all available evidence in one final verdict. Inspect existing test and coverage evidence only; do not run project tests or generate coverage.
 
-Reports distinguish configured test layers from existing recorded results, cite their dates/scope, and disclose unavailable or stale coverage. Non-execution is not treated as failure or an additional scoring penalty. The rubric's existing no-measurable-coverage outcome is unchanged. Lighthouse audits, safe browser walkthroughs, and performance traces remain separate live-site measurements; they do not invoke project test suites.
+Reports distinguish configured test layers from existing recorded results, cite their dates/scope, and disclose unavailable or stale coverage. Non-execution is not treated as failure or an additional scoring penalty. The rubric's existing no-measurable-coverage outcome is unchanged. Lighthouse audits, safe browser inspections, and performance traces remain separate live-site measurements; they do not invoke project test suites.
 
 ## Report Contents
 
@@ -135,8 +135,8 @@ Assessments are **read-only and output-only**: the complete report, including di
 - UI-system and core-package status tables.
 - Configured test layers and existing recorded test/coverage evidence, with explicit non-execution and evidence limitations.
 - A quick, sourced modern-web-guidance check with a 0-10 score when available, or an explained `N/A`.
-- A Mermaid user-journey diagram with verified API endpoints associated with journey tasks.
-- Separate optional Lighthouse audit and journey performance results **after the journey**, including independent statuses, evidence sources, diagnostic metrics, and limitations.
+- A Mermaid application architecture map showing frontend component hierarchy, UI-framework color coding, verified API calls, backend services, and persistence operations, with evidence and endpoint details.
+- Separate optional Lighthouse audit and interaction performance results **after the architecture map**, including independent statuses, evidence sources, diagnostic metrics, and limitations.
 - Ranked pros and cons, followed by a consolidated verdict covering all observed results and highest-leverage improvements—not just the weighted score.
 
 ## Contributing

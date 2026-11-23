@@ -24,7 +24,7 @@ frontend-assessment-skill/
 └── README.md
 ```
 
-- **`skills/SKILL.md`**: Contains all repository assessment, test/coverage evidence inspection, Lighthouse audit, journey tracing, scoring, and consolidated report/verdict instructions. There are no companion-skill dependencies.
+- **`skills/SKILL.md`**: Contains all repository assessment, test/coverage evidence inspection, application architecture mapping, Lighthouse audit, interaction tracing, scoring, and consolidated report/verdict instructions. There are no companion-skill dependencies.
 - **`bin/cli.js`**: Installs only `frontend-assessment/SKILL.md` under global (`~/.agents/skills/`) or project-level (`.agents/skills/`) storage. `--update` requires the existing skill and replaces only its `SKILL.md`. Old companion directories from a three-skill installation are detected and reported but never modified or deleted.
 
 ---
@@ -98,7 +98,7 @@ When editing `skills/SKILL.md`:
 3. Invoke the single skill with sample prompts:
     - _"Perform a frontend health assessment of this repository"_
     - _"Run a frontend assessment for Q3 2025 focusing on the web-app package"_
-    - _"Run a complete frontend assessment with FRONTEND_ASSESSMENT_URL=https://example.com and include Lighthouse audits and journey tracing"_
+    - _"Run a complete frontend assessment with FRONTEND_ASSESSMENT_URL=https://example.com and include the frontend/backend architecture map, Lighthouse audits, and interaction tracing"_
     - _"Run a complete frontend assessment using existing test/coverage evidence only, without running project tests or generating coverage, and use all available evidence in the final verdict"_
 4. Check that:
     - The criteria scores and normalized 0-100 score calculate properly from the applicable maximum (110 before `N/A` exclusions), including the modern-web-guidance 10-point criterion.
@@ -108,7 +108,8 @@ When editing `skills/SKILL.md`:
     - A maintained in-house component system with consumed semantic CSS-variable tokens can earn the same UI-system score as a third-party equivalent without a recognized styling brand or dedicated token package.
     - Intentionally composed component/styling layers are distinguished from competing implementations, and sampled findings state their scope rather than claiming application-wide adoption.
     - An MCP audit excluding Performance still reports supported categories and marks unsupported categories `N/A` with exact reasons.
-    - Journey traces stay active through replayed interactions, stop explicitly, and remain independent of Lighthouse availability; lab interaction timings are never substituted for field INP or a category score.
+    - Architecture diagrams show verified frontend component hierarchy, distinguish UI rendering frameworks with matching labels/colors/legend, and connect only verified API calls, backend services, and persistence operations; unavailable backend internals are not invented.
+    - Interaction traces stay active through replayed safe interactions, stop explicitly, and remain independent of Lighthouse availability; lab interaction timings are never substituted for field INP or a category score.
     - Authentication blocks, tool failures, and skipped consequential actions are reported as distinct limitations; the assessed project stays read-only with no generated test/coverage artifact exception.
     - The skill is self-contained and does not invoke or require companion skills. Its report contains one verdict synthesizing all available evidence and includes the modern-web-guidance check when available, or excludes its weight when `N/A`.
     - Assessments only inspect test configuration/source and existing recorded test/coverage evidence. They never run project tests or coverage commands, directly or indirectly, and never offer execution as an opt-in. The separate modern-web-guidance source review does not invoke project tests. No particular framework or implementation approach is required; non-execution is not a failure or an extra scoring penalty.

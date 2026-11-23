@@ -145,7 +145,7 @@ async function run() {
             "Run the complete assessment with one prompt in your AI agent (e.g. Zed, Claude):",
         );
         console.log(
-            '   "Run a complete frontend assessment with FRONTEND_ASSESSMENT_URL=https://example.com, including Lighthouse audits, journey tracing, and one consolidated verdict"\n',
+            '   "Run a complete frontend assessment with FRONTEND_ASSESSMENT_URL=https://example.com, including a frontend/backend architecture map, Lighthouse audits, interaction tracing, and one consolidated verdict"\n',
         );
     } catch (err) {
         console.error("\n❌ Installation failed:", err.message, "\n");
