@@ -1,6 +1,6 @@
 {
   "name": "frontend-assessment-skill",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "Installer for the unified frontend assessment agent skill with Lighthouse and performance guidance (Zed, Claude, and agent tools)",
   "type": "module",
   "bin": "./bin/cli.js",
