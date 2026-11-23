@@ -106,6 +106,8 @@ Make data movement explicit: connect the relevant page/feature component to its 
 
 Color-code rendered UI components by their verified UI rendering framework: use Mermaid `classDef`/`class` assignments with a distinct, consistent, readable fill for each actual framework used in each deployable app, label framework names in the component nodes, and include a matching legend so color is not the only signal. Apply color only to framework-owned/rendered component nodes, not to routers, meta-frameworks, build tools, styling systems, or backend nodes. Count frameworks using section 2's definition; do not show unused, test-only, or retired runtimes as adopted. Keep labels short and the graph top-down to preserve hierarchy and avoid collisions.
 
+Output the diagram inside a Markdown code fence tagged `mermaid` (beginning with `flowchart TB` inside the fence). Use unique, simple node IDs; ensure every subgraph has a matching `end`, every link targets an explicit node (not a subgraph ID), and each `class` assignment refers to declared nodes and a declared `classDef`. Represent unresolved destinations as explicit note/terminal nodes and do not connect them to a guessed backend or subgraph. Keep edge labels concise; put long or parameterized routes such as `/items/{id}` in the endpoint table and use a short endpoint ID in the graph. Before responding, check the Mermaid block's fence and syntax, and validate it with a Mermaid parser when one is available.
+
 When a target URL and Chrome DevTools MCP are available, use the authentication procedure below, then inspect representative pages and safely exercise only non-consequential controls to confirm visible component states and observable network calls before Lighthouse audits. Do not submit messages, upload files, purchase, or mutate shared data without explicit authorization. If browser inspection is unavailable, use the source-verified map and label it as not browser-verified.
 
 ## 4. Optional Live-Site Audits and Interaction Performance
@@ -220,7 +222,7 @@ Report whether the check was completed or `N/A`, the guide IDs/topics retrieved,
 
 ### Application Architecture Diagram
 
-Include the Mermaid architecture flowchart prepared in step 3, a legend for framework colors, the evidence/source paths and verification status, and a compact endpoint table with method, route, base URL or environment variable, and associated frontend/backend component. Include verified persistence operations and note any backend or store that could not be inspected. Do not generate a user-journey diagram.
+Include the fenced Mermaid architecture flowchart prepared in step 3, a legend for framework colors, the evidence/source paths and verification status, and a compact endpoint table with method, route, base URL or environment variable, and associated frontend/backend component. Include verified persistence operations and note any backend or store that could not be inspected. Do not generate a user-journey diagram.
 
 ### Optional Lighthouse Audit Results
 
